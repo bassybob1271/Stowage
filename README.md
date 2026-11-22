@@ -33,6 +33,35 @@ docker compose -f deploy/docker-compose.yml --profile rclone up -d   # rclone ca
 
 The compose file publishes the app on `127.0.0.1` only. Set `APP_BIND=0.0.0.0` (with TLS!) to expose it.
 
+### Cloudflare Tunnel (public HTTPS, no open ports)
+
+`cloudflared` makes outbound-only connections to Cloudflare, so the machine needs no inbound firewall rules. Your domain's DNS must be on Cloudflare (a free account is enough).
+
+1. Change `ACCESS_CODE` to a long random value, then set `COOKIE_SECURE=true`, `TRUST_PROXY=true` and `APP_ORIGIN=https://files.example.com` in `deploy/.env`.
+2. Authorize this machine once, which opens a Cloudflare link to approve in a browser, then create the tunnel and its DNS record:
+
+   ```bash
+   cd deploy && mkdir -p cloudflared && chmod 700 cloudflared
+   docker run --rm -it -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/cloudflared:/tmp/.cloudflared" cloudflare/cloudflared:2026.11.1 tunnel login
+   docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/cloudflared:/tmp/.cloudflared" cloudflare/cloudflared:2026.11.1 tunnel create stowage
+   docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/cloudflared:/tmp/.cloudflared" cloudflare/cloudflared:2026.11.1 tunnel route dns stowage files.example.com
+   ```
+
+3. Write `deploy/cloudflared/config.yml`, using the tunnel ID that `create` printed:
+
+   ```yaml
+   tunnel: <TUNNEL-ID>
+   credentials-file: /etc/cloudflared/<TUNNEL-ID>.json
+   ingress:
+     - hostname: files.example.com
+       service: http://app:8787
+     - service: http_status:404
+   ```
+
+4. Start it: `docker compose -f deploy/docker-compose.yml --profile tunnel up -d`.
+
+`deploy/cloudflared/` holds secrets (the account cert and tunnel credentials). It is gitignored; keep it `chmod 700`. If you created the tunnel in the Cloudflare dashboard instead, its token is base64 JSON `{a, t, s}`, which maps to a credentials file `{AccountTag, TunnelID, TunnelSecret}`. For a second login layer in front of the gate, add a Cloudflare Access application (email one-time code) for the hostname.
+
 ## Development
 
 Requires Node 22 and pnpm (`corepack enable`), plus Docker for the storage backends.

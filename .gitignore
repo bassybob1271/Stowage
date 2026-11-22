@@ -22,3 +22,5 @@ e2e/fixtures/*.txt
 e2e/fixtures/*.svg
 e2e/fixtures/*.html
 !e2e/fixtures/make-*
+# Cloudflare Tunnel cert/credentials (secrets)
+deploy/cloudflared/

@@ -74,15 +74,15 @@ services:
     restart: unless-stopped
 
   # Optional: Cloudflare Tunnel — publish the app at https://<hostname> with no
-  # inbound ports open. Create the tunnel in the Cloudflare dashboard
-  # (Zero Trust → Networks → Tunnels), add a public hostname whose service is
-  # http://app:8787, and put its token in .env as TUNNEL_TOKEN. See README.
+  # inbound ports open. deploy/cloudflared/ (gitignored, secrets) holds
+  # config.yml (hostname → http://app:8787) and the tunnel credentials JSON.
+  # Setup steps: README → "Cloudflare Tunnel".
   cloudflared:
     profiles: [tunnel]
     image: cloudflare/cloudflared:2026.11.1
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in deploy/.env}
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
     depends_on: [app]
     restart: unless-stopped
 
