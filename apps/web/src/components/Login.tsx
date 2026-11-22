@@ -48,8 +48,10 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           ref={input}
           autoFocus
           type="password"
-          inputMode="numeric"
           autoComplete="current-password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           className="input text-center text-lg tracking-[0.3em]"
           value={code}
           onChange={(e) => setCode(e.target.value)}
