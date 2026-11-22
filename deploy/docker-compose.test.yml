@@ -1,0 +1,47 @@
+# Backends for the storage conformance suite.
+#   docker compose -f deploy/docker-compose.test.yml up -d
+#   pnpm --filter @stowage/storage test:infra
+# All ports bind to 127.0.0.1 only.
+name: stowage-test
+
+services:
+  # S3-compatible #1: RustFS (MinIO-compatible; MinIO stopped publishing images — see docs/DECISIONS.md)
+  rustfs:
+    image: rustfs/rustfs:1.0.6
+    command: /data
+    environment:
+      RUSTFS_ACCESS_KEY: stowagetest
+      RUSTFS_SECRET_KEY: stowagetest-secret
+    ports: ["127.0.0.1:9100:9000"]
+
+  # S3-compatible #2: SeaweedFS (listed S3 target in the spec)
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.54
+    command: server -s3 -s3.port=8333 -dir=/data -master.volumeSizeLimitMB=128 -volume.max=50
+    ports: ["127.0.0.1:8333:8333"]
+
+  kubo:
+    image: ipfs/kubo:v0.43.1
+    environment:
+      IPFS_PROFILE: test
+    ports: ["127.0.0.1:5101:5001"]
+
+  rclone:
+    image: rclone/rclone:1.76.0
+    command: serve webdav /data --addr :8080 --rc --rc-addr :5572 --rc-no-auth
+    ports: ["127.0.0.1:8180:8080", "127.0.0.1:5572:5572"]
+
+  sftp:
+    image: atmoz/sftp:alpine
+    command: stowage:stowage:::upload
+    ports: ["127.0.0.1:2222:22"]
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    command: azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck --loose
+    ports: ["127.0.0.1:10000:10000"]
+
+  fake-gcs:
+    image: fsouza/fake-gcs-server:1.56.1
+    entrypoint: ["/bin/sh", "-c", "mkdir -p /data/stowage-test && exec /bin/fake-gcs-server -scheme http -port 4443 -public-host localhost:4443 -external-url http://localhost:4443 -data /data -backend memory"]
+    ports: ["127.0.0.1:4443:4443"]
