@@ -73,6 +73,21 @@ services:
     depends_on: [app]
     restart: unless-stopped
 
+  # Optional: Cloudflare Tunnel — publish the app at https://<hostname> with no
+  # inbound ports open. One-time setup (see README "Cloudflare Tunnel"):
+  #   docker compose -f deploy/docker-compose.yml --profile tunnel run --rm cloudflared tunnel login
+  #   docker compose -f deploy/docker-compose.yml --profile tunnel run --rm cloudflared tunnel create stowage
+  #   docker compose -f deploy/docker-compose.yml --profile tunnel run --rm cloudflared tunnel route dns stowage files.example.com
+  # then write deploy/cloudflared/config.yml from config.example.yml.
+  cloudflared:
+    profiles: [tunnel]
+    image: cloudflare/cloudflared:2026.11.1
+    command: tunnel --no-autoupdate --config /home/nonroot/.cloudflared/config.yml run
+    volumes:
+      - ./cloudflared:/home/nonroot/.cloudflared
+    depends_on: [app]
+    restart: unless-stopped
+
 volumes:
   stowage-data:
   s3-data:

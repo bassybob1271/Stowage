@@ -84,8 +84,12 @@ export class LoginLimiter {
 
 export function clientIp(c: Context, trustProxy: boolean): string {
   if (trustProxy) {
+    // Cloudflare sets this itself; clients can't forge it through the edge.
+    const cf = c.req.header('cf-connecting-ip');
+    if (cf) return cf.trim();
+    // Otherwise take the entry our proxy appended (rightmost); leftmost entries are client-supplied.
     const xff = c.req.header('x-forwarded-for');
-    if (xff) return xff.split(',')[0]!.trim();
+    if (xff) return xff.split(',').pop()!.trim();
   }
   try {
     return getConnInfo(c).remote.address ?? 'unknown';

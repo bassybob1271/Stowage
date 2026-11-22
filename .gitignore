@@ -22,3 +22,6 @@ e2e/fixtures/*.txt
 e2e/fixtures/*.svg
 e2e/fixtures/*.html
 !e2e/fixtures/make-*
+# Cloudflare Tunnel credentials (cert.pem, <id>.json) and local config
+deploy/cloudflared/*
+!deploy/cloudflared/config.example.yml

@@ -80,14 +80,15 @@ export function createApp(ctx: AppContext) {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
       const origin = c.req.header('origin');
       if (origin) {
-        const allowed = cfg.APP_ORIGIN ? new URL(cfg.APP_ORIGIN).host : c.req.header('host');
+        // Same-host requests, plus the public origin when served via a tunnel/proxy.
+        const allowed = new Set([c.req.header('host'), cfg.APP_ORIGIN && new URL(cfg.APP_ORIGIN).host].filter(Boolean));
         let host: string | undefined;
         try {
           host = new URL(origin).host;
         } catch {
           /* malformed */
         }
-        if (host !== allowed) return c.json({ error: 'cross-origin request blocked' }, 403);
+        if (!host || !allowed.has(host)) return c.json({ error: 'cross-origin request blocked' }, 403);
       }
     }
     await next();

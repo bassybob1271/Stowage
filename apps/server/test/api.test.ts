@@ -6,7 +6,7 @@ import { loadConfig } from '../src/config.js';
 import { openDb } from '../src/db/index.js';
 import { MountRegistry } from '../src/mounts.js';
 import { createApp, createContext } from '../src/app.js';
-import { LoginLimiter } from '../src/auth.js';
+import { LoginLimiter, clientIp } from '../src/auth.js';
 import { parseRange } from '../src/serve.js';
 
 const dir = mkdtempSync(join(tmpdir(), 'stowage-api-'));
@@ -83,6 +83,18 @@ describe('access gate', () => {
   it('blocks cross-origin mutations', async () => {
     const r = await req('/api/fs/local/mkdir', { method: 'POST', body: JSON.stringify({ path: 'x' }), headers: { origin: 'https://evil.example', host: 'localhost' } });
     expect(r.status).toBe(403);
+  });
+});
+
+describe('client IP behind a proxy', () => {
+  const fake = (h: Record<string, string>) => ({ req: { header: (k: string) => h[k.toLowerCase()] } }) as never;
+  it('prefers CF-Connecting-IP, then the rightmost X-Forwarded-For entry', () => {
+    expect(clientIp(fake({ 'cf-connecting-ip': '203.0.113.9', 'x-forwarded-for': '1.1.1.1, 203.0.113.9' }), true)).toBe('203.0.113.9');
+    // A client-forged leftmost entry is ignored.
+    expect(clientIp(fake({ 'x-forwarded-for': '6.6.6.6, 198.51.100.7' }), true)).toBe('198.51.100.7');
+  });
+  it('ignores forwarding headers unless TRUST_PROXY is on', () => {
+    expect(clientIp(fake({ 'cf-connecting-ip': '203.0.113.9' }), false)).toBe('unknown');
   });
 });
 
