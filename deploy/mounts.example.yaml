@@ -1,0 +1,83 @@
+# Example mount for every adapter. Copy what you need into mounts.yaml.
+# Secrets: use ${ENV_VAR} references instead of inline values.
+mounts:
+  # ---- S3-compatible ----------------------------------------------------
+  - id: aws
+    label: AWS S3
+    kind: s3
+    config: { region: us-east-1, bucket: my-bucket, accessKey: ${AWS_ACCESS_KEY_ID}, secretKey: ${AWS_SECRET_ACCESS_KEY} }
+
+  - id: r2
+    label: Cloudflare R2
+    kind: s3
+    config: { endpoint: ${R2_ENDPOINT}, region: auto, bucket: ${R2_BUCKET}, accessKey: ${R2_ACCESS_KEY}, secretKey: ${R2_SECRET_KEY} }
+
+  - id: b2
+    label: Backblaze B2
+    kind: s3
+    config: { endpoint: ${B2_ENDPOINT}, region: us-west-004, bucket: ${B2_BUCKET}, accessKey: ${B2_KEY_ID}, secretKey: ${B2_APP_KEY} }
+
+  # Wasabi: https://s3.<region>.wasabisys.com · DO Spaces: https://<region>.digitaloceanspaces.com
+  # OCI: https://<namespace>.compat.objectstorage.<region>.oraclecloud.com (forcePathStyle: true)
+  # Storj gateway: https://gateway.storjshare.io · Filebase: https://s3.filebase.com
+  # Garage / SeaweedFS / Ceph RGW / RustFS / MinIO: your endpoint + forcePathStyle: true
+  # GCS (HMAC interop keys): endpoint https://storage.googleapis.com, region auto
+  - id: wasabi
+    label: Wasabi
+    kind: s3
+    config: { endpoint: https://s3.us-east-1.wasabisys.com, region: us-east-1, bucket: my-bucket, accessKey: ${WASABI_KEY}, secretKey: ${WASABI_SECRET} }
+
+  # Rooted at a key prefix inside a bucket, read-only:
+  - id: archive
+    label: Archive (read-only)
+    kind: s3
+    readOnly: true
+    config: { endpoint: ${R2_ENDPOINT}, region: auto, bucket: ${R2_BUCKET}, prefix: archive/2024, accessKey: ${R2_ACCESS_KEY}, secretKey: ${R2_SECRET_KEY} }
+
+  # ---- IPFS ---------------------------------------------------------------
+  - id: ipfs
+    label: IPFS
+    kind: ipfs
+    config:
+      apiUrl: http://kubo:5001          # Kubo RPC — keep private
+      gatewayUrl: http://kubo:8080      # optional, used for reads
+      mfsRoot: /stowage
+      # Optional remote pinning (IPFS Pinning Service API):
+      pinning: { endpoint: ${PINNING_ENDPOINT}, token: ${PINNING_TOKEN}, required: false }
+
+  # ---- Local filesystem / NAS --------------------------------------------
+  - id: nas
+    label: NAS
+    kind: local
+    config: { root: /mnt/nas }
+
+  # ---- WebDAV (Nextcloud, ownCloud, Synology, ...) -----------------------
+  - id: nextcloud
+    label: Nextcloud
+    kind: webdav
+    config: { url: https://cloud.example.com/remote.php/dav/files/me, username: me, password: ${NEXTCLOUD_APP_PASSWORD} }
+
+  # ---- SFTP ---------------------------------------------------------------
+  - id: server
+    label: My server
+    kind: sftp
+    config: { host: server.example.com, port: 22, username: me, privateKeyPath: /secrets/id_ed25519, root: /srv/files }
+
+  # ---- Azure Blob ---------------------------------------------------------
+  - id: azure
+    label: Azure
+    kind: azure
+    config: { connectionString: ${AZURE_STORAGE_CONNECTION_STRING}, container: stowage }
+
+  # ---- Google Cloud Storage (native) -------------------------------------
+  - id: gcs
+    label: GCS
+    kind: gcs
+    config: { bucket: my-bucket, projectId: my-project, keyFilename: /secrets/gcs.json }
+
+  # ---- rclone: anything rclone supports ----------------------------------
+  # Run `rclone serve webdav <remote>:` (the compose "rclone" profile does this).
+  - id: gdrive
+    label: Google Drive (rclone)
+    kind: rclone
+    config: { url: http://rclone:8080, rcUrl: http://rclone:5572 }

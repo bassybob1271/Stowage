@@ -1,0 +1,14 @@
+{
+  "name": "@stowage/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fixtures": "node fixtures/make-docs.mjs && sh fixtures/make-media.sh",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}

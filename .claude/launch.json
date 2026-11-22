@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "stowage",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "cd \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\" && export PATH=$HOME/.local/bin:$PATH && node --conditions=development --import ./apps/server/node_modules/tsx/dist/loader.mjs --env-file=.env apps/server/src/main.ts"],
+      "port": 8787
+    }
+  ]
+}

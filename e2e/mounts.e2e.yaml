@@ -1,0 +1,18 @@
+# Mounts for `pnpm e2e`. Endpoints default to deploy/docker-compose.test.yml.
+mounts:
+  - id: s3
+    label: S3
+    kind: s3
+    config:
+      endpoint: ${E2E_S3_ENDPOINT:-http://127.0.0.1:9100}
+      bucket: ${E2E_S3_BUCKET:-stowage-e2e}
+      accessKey: ${E2E_S3_ACCESS_KEY:-stowagetest}
+      secretKey: ${E2E_S3_SECRET_KEY:-stowagetest-secret}
+      forcePathStyle: true
+      createBucket: true
+  - id: ipfs
+    label: IPFS
+    kind: ipfs
+    config:
+      apiUrl: ${E2E_KUBO_URL:-http://127.0.0.1:5101}
+      mfsRoot: /stowage-e2e
