@@ -60,7 +60,7 @@ The compose file publishes the app on `127.0.0.1` only. Set `APP_BIND=0.0.0.0` (
 
 4. Start it: `docker compose -f deploy/docker-compose.yml --profile tunnel up -d`.
 
-`deploy/cloudflared/` holds secrets (the account cert and tunnel credentials). It is gitignored; keep it `chmod 700`. If you created the tunnel in the Cloudflare dashboard instead, its token is base64 JSON `{a, t, s}`, which maps to a credentials file `{AccountTag, TunnelID, TunnelSecret}`. For a second login layer in front of the gate, add a Cloudflare Access application (email one-time code) for the hostname.
+`deploy/cloudflared/` holds secrets (the account cert and tunnel credentials). It is gitignored; keep it `chmod 700`. If you created the tunnel in the Cloudflare dashboard instead, its token is base64 JSON `{a, t, s}`, which maps to a credentials file `{AccountTag, TunnelID, TunnelSecret}`. For a second login layer in front of the gate, add a Cloudflare Access application for the hostname: Zero Trust → Access → Applications → Self-hosted, with an **Allow** policy listing approved emails and the One-time PIN login method. Unauthenticated requests are then redirected to Cloudflare's sign-in before they reach Stowage.
 
 ## Development
 
