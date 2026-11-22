@@ -1,0 +1,38 @@
+{
+  "name": "@stowage/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cd ../.. && tsx watch --conditions=development --env-file-if-exists=.env apps/server/src/main.ts",
+    "start": "cd ../.. && node --env-file-if-exists=.env apps/server/dist/main.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.5",
+    "@node-rs/argon2": "^2.0.2",
+    "@stowage/shared": "workspace:*",
+    "@stowage/storage": "workspace:*",
+    "@tus/file-store": "^2.0.0",
+    "@tus/server": "^2.3.0",
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^12.4.1",
+    "busboy": "^1.6.0",
+    "drizzle-orm": "^0.44.7",
+    "hono": "^4.10.4",
+    "music-metadata": "^11.9.0",
+    "postgres": "^3.4.7",
+    "sharp": "^0.34.4",
+    "yaml": "^2.8.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.3",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/busboy": "^1.5.4",
+    "tsx": "^4.20.6",
+    "vitest": "^3.2.4"
+  }
+}
