@@ -47,18 +47,20 @@ The compose file publishes the app on `127.0.0.1` only. Set `APP_BIND=0.0.0.0` (
    docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/cloudflared:/tmp/.cloudflared" cloudflare/cloudflared:2026.11.1 tunnel route dns stowage files.example.com
    ```
 
-3. Write `deploy/cloudflared/config.yml`, using the tunnel ID that `create` printed:
+3. Write `deploy/cloudflared/native.yml`, using the tunnel ID that `create` printed and the absolute path of `deploy/cloudflared`:
 
    ```yaml
    tunnel: <TUNNEL-ID>
-   credentials-file: /etc/cloudflared/<TUNNEL-ID>.json
+   credentials-file: /abs/path/to/deploy/cloudflared/<TUNNEL-ID>.json
    ingress:
      - hostname: files.example.com
-       service: http://app:8787
+       service: http://127.0.0.1:8787
+     - hostname: live.example.com      # optional: apps/live streaming
+       service: http://127.0.0.1:8790
      - service: http_status:404
    ```
 
-4. Start it: `docker compose -f deploy/docker-compose.yml --profile tunnel up -d`.
+4. Start it natively, along with the live service: `sh apps/live/scripts/run-native.sh`. The connector is a native binary (`pnpm --filter @stowage/live fetch-bins`), so one connector serves every hostname.
 
 `deploy/cloudflared/` holds secrets (the account cert and tunnel credentials). It is gitignored; keep it `chmod 700`. If you created the tunnel in the Cloudflare dashboard instead, its token is base64 JSON `{a, t, s}`, which maps to a credentials file `{AccountTag, TunnelID, TunnelSecret}`. For a second login layer in front of the gate, add a Cloudflare Access application for the hostname: Zero Trust → Access → Applications → Self-hosted, with an **Allow** policy listing approved emails and the One-time PIN login method. Unauthenticated requests are then redirected to Cloudflare's sign-in before they reach Stowage.
 

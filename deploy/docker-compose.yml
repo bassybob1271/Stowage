@@ -73,18 +73,9 @@ services:
     depends_on: [app]
     restart: unless-stopped
 
-  # Optional: Cloudflare Tunnel — publish the app at https://<hostname> with no
-  # inbound ports open. deploy/cloudflared/ (gitignored, secrets) holds
-  # config.yml (hostname → http://app:8787) and the tunnel credentials JSON.
-  # Setup steps: README → "Cloudflare Tunnel".
-  cloudflared:
-    profiles: [tunnel]
-    image: cloudflare/cloudflared:2026.11.1
-    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
-    volumes:
-      - ./cloudflared:/etc/cloudflared:ro
-    depends_on: [app]
-    restart: unless-stopped
+  # Cloudflare Tunnel runs natively (not in Docker) so one connector can serve
+  # both files.* (this app, 127.0.0.1:8787) and live.* (apps/live). See
+  # apps/live/scripts/run-native.sh and README → "Cloudflare Tunnel".
 
 volumes:
   stowage-data:

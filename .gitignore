@@ -24,3 +24,9 @@ e2e/fixtures/*.html
 !e2e/fixtures/make-*
 # Cloudflare Tunnel cert/credentials (secrets)
 deploy/cloudflared/
+# apps/live native binaries and runtime data
+apps/live/bin/
+apps/live/data/
+*.key
+*.pem
+apps/live/auto.crt
