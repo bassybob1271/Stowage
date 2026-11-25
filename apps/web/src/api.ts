@@ -24,6 +24,8 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const enc = (p: string) => encodeURIComponent(p);
 
+export type BoxPlanId = 'free' | 'flex' | 'studio';
+
 export interface Session {
   authenticated: boolean;
   /** 'box' when BazzyBox accounts are on; 'code' for the access-code gate. */
@@ -33,7 +35,7 @@ export interface Session {
 }
 
 export interface BoxPlan {
-  id: 'free' | 'flex';
+  id: BoxPlanId;
   label: string;
   priceCredits: number;
   includedBytes: number;
@@ -43,7 +45,7 @@ export interface BoxPlan {
 
 export interface BoxSummary {
   account: { id: string; email: string; createdAt: string };
-  plan: { id: 'free' | 'flex'; label: string; priceCredits: number; includedBytes: number; periodEnd: number | null; overageCreditsPerTbMonth: number | null };
+  plan: { id: BoxPlanId; label: string; priceCredits: number; includedBytes: number; periodEnd: number | null; overageCreditsPerTbMonth: number | null };
   usage: { usedBytes: number; allowedBytes: number; measuredAt: number | null; sendBytes: number; sendFreeBytes: number };
   wallet: { credits: number; dailyChargeCredits: number };
   plans: BoxPlan[];
@@ -78,7 +80,7 @@ export const api = {
   box: {
     me: () => call<BoxSummary>('/api/box/me'),
     refreshUsage: () => call<BoxSummary>('/api/box/usage/refresh', { method: 'POST' }),
-    setPlan: (plan: 'free' | 'flex') => call<BoxSummary>('/api/box/plan', { method: 'POST', body: JSON.stringify({ plan }) }),
+    setPlan: (plan: BoxPlanId) => call<BoxSummary>('/api/box/plan', { method: 'POST', body: JSON.stringify({ plan }) }),
     buy: (pack: string) => call<BoxSummary | { checkoutUrl: string }>('/api/box/credits', { method: 'POST', body: JSON.stringify({ pack }) }),
     shares: () => call<{ shares: BoxShare[] }>('/api/box/shares'),
     share: (path: string, days = 7) => call<{ url: string; expiresAt: string }>('/api/box/shares', { method: 'POST', body: JSON.stringify({ path, days }) }),

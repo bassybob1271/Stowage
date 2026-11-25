@@ -4,12 +4,14 @@ BazzyBox is Stowage running with `BAZZYBOX=true`: a cheaper, no-lock-in alternat
 
 ## Pricing
 
-| | Free | Flex |
-|---|---|---|
-| Price | $0 | **$9.99 per 30 days** (999 credits) |
-| Included storage | 10 GB | **3 TB** |
-| Past the included space | Uploads stop | **$9.50 per TB-month**, charged daily |
-| Share-link downloads | 2 GB/month | 50 GB/month, then **$0.04/GB** |
+| | Free | Flex | Studio |
+|---|---|---|---|
+| Price | $0 | **$9.99 per 30 days** (999 credits) | **$79.99 per 30 days** (7,999 credits) |
+| Included storage | 10 GB | **3 TB** | **15 TB** |
+| Past the included space | Uploads stop | **$9.50 per TB-month**, charged daily | **$6 per TB-month**, charged daily |
+| Share-link downloads | 2 GB/month | 50 GB/month, then **$0.04/GB** | 250 GB/month, then **$0.04/GB** |
+
+**Studio** keeps heavy users below Dropbox up to 20 TB. Flex's $9.50/TB overtakes Dropbox Advanced ($90 for 15 TB on 3 seats, $120 for 20 TB on 4) at 12 TB, and Studio is the cheaper BazzyBox plan from 11 TB. Its margin is thin on pay-as-you-go e2 ($6/TB): a customer who fills all 15 TB costs about $99/month to host at $6/TB with 10% overhead. Put e2 on a yearly ($4.96/TB) or 3-year ($4.13/TB) plan before selling Studio widely. Switching between paid plans credits the unused days of the old plan first, and a switch the wallet can't cover changes nothing.
 
 **Credits wallet.** 1 credit = $0.01. Packs: $10 → 1,000 · $25 → 2,600 (+4%) · $50 → 5,300 (+6%) · $100 → 11,000 (+10%). Credits don't expire. Plan fees, extra storage and paid sends come out of the wallet.
 
@@ -64,7 +66,7 @@ Uploads go in 8 MB resumable chunks, under Cloudflare's 100 MB request limit. La
 | `POST /api/auth/box/login` `{email, password}` | Sign in (rate-limited per IP) |
 | `GET /api/box/me` | Plan, usage, wallet, price list, recent activity |
 | `POST /api/box/usage/refresh` | Recount stored bytes now |
-| `POST /api/box/plan` `{plan: "free" \| "flex"}` | Switch plan immediately |
+| `POST /api/box/plan` `{plan: "free" \| "flex" \| "studio"}` | Switch plan immediately |
 | `POST /api/box/credits` `{pack}` | Returns `{checkoutUrl}` (Stripe), or grants instantly with `BOX_DEV_CREDITS` |
 | `GET/POST /api/box/shares`, `DELETE /api/box/shares/:token` | Share links |
 | `GET /s/:token/:name` | Public download (Range supported, metered) |

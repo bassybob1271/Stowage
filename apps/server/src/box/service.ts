@@ -167,7 +167,7 @@ export class BoxService {
     const limit = allowedBytes(plan, a.walletMc);
     if (a.usedBytes + Math.max(0, incoming) <= limit) return;
     if (plan.overageCreditsPerTbMonth === null)
-      throw new BoxError(507, `This upload would pass your ${fmtBytes(plan.includedBytes)} free space. Upgrade to Flex for 3 TB.`, 'quota');
+      throw new BoxError(507, `This upload would pass your ${fmtBytes(plan.includedBytes)} free space. Upgrade to Flex for 3 TB or Studio for 15 TB.`, 'quota');
     throw new BoxError(402, `Add credits to store past ${fmtBytes(plan.includedBytes)}: your wallet must cover a week of the extra space.`, 'wallet');
   }
 
@@ -214,14 +214,21 @@ export class BoxService {
     const now = this.now();
     const t = this.db.t.accounts;
     const target = this.plans[to];
+    const current = this.plan(a);
+    // Unused days of the current paid plan always go back to the wallet, whichever way the switch goes.
+    const refund = a.plan === 'free' ? 0 : proratedRefundMc(current, a.periodStart ?? now, a.periodEnd ?? now, now);
+    const refundNote = () => `Unused ${current.label} days returned (${fmtDays(a.periodEnd! - now)})`;
     if (to === 'free') {
-      const refund = proratedRefundMc(this.plan(a), a.periodStart ?? now, a.periodEnd ?? now, now);
-      if (refund > 0) await this.ledger(id, refund, 'refund', `Unused Flex days returned (${fmtDays(a.periodEnd! - now)})`);
+      if (refund > 0) await this.ledger(id, refund, 'refund', refundNote());
       await this.db.orm.update(t).set({ plan: 'free', periodStart: null, periodEnd: null }).where(eq(t.id, id));
       log.info('box.downgrade', { account: id, refundMc: refund });
     } else {
       const price = target.priceCredits * 1000;
-      if (a.walletMc < price) throw new BoxError(402, `Flex costs ${target.priceCredits} credits; your wallet has ${Math.floor(a.walletMc / 1000)}.`, 'wallet');
+      // Check before touching the ledger, so a failed switch leaves the old plan and wallet as they were.
+      if (a.walletMc + refund < price) {
+        throw new BoxError(402, `${target.label} costs ${target.priceCredits} credits; your wallet has ${Math.floor((a.walletMc + refund) / 1000)}${refund > 0 ? ' counting unused days' : ''}.`, 'wallet');
+      }
+      if (refund > 0) await this.ledger(id, refund, 'refund', refundNote());
       await this.ledger(id, -price, 'plan', `${target.label}, 30 days`);
       await this.db.orm.update(t).set({ plan: to, periodStart: now, periodEnd: now + PERIOD_MS, meteredAt: now }).where(eq(t.id, id));
       log.info('box.upgrade', { account: id, plan: to });
@@ -233,7 +240,7 @@ export class BoxService {
 
   /**
    * Daily storage meter and renewals. Charges each full day past the included space,
-   * renews Flex from the wallet, and drops to Free (never deleting files) if the wallet can't pay.
+   * renews paid plans from the wallet, and drops to Free (never deleting files) if the wallet can't pay.
    */
   async meter(id: string) {
     const now = this.now();
@@ -246,7 +253,7 @@ export class BoxService {
         await this.ledger(id, -p.priceCredits * 1000, 'plan', `${p.label} renewal, 30 days`);
         await this.db.orm.update(t).set({ periodStart: a.periodEnd, periodEnd: a.periodEnd + PERIOD_MS }).where(eq(t.id, id));
       } else {
-        await this.ledger(id, 0, 'plan', 'Wallet too low to renew Flex; moved to Free. Your files are untouched.');
+        await this.ledger(id, 0, 'plan', `Wallet too low to renew ${p.label}; moved to Free. Your files are untouched.`);
         await this.db.orm.update(t).set({ plan: 'free', periodStart: null, periodEnd: null }).where(eq(t.id, id));
       }
       a = await this.get(id);
