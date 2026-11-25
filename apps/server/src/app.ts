@@ -159,6 +159,7 @@ export function createApp(ctx: AppContext) {
       account: Boolean(accountIdOf(s?.sub)),
       admin: s?.sub === 'owner',
       bazzy: Boolean(ctx.box) && bazzyEnabled(cfg),
+      sites: ctx.box ? { tv: cfg.BAZZY_TV_URL ?? null, live: cfg.BAZZY_LIVE_URL ?? null } : undefined,
     });
   });
 
@@ -266,7 +267,7 @@ export function createApp(ctx: AppContext) {
   // ---------- BazzyBox public website ----------
   // Visitors without a session get the marketing site at "/"; signed-in users fall through to the app.
   if (ctx.box) {
-    const site = siteHtml({ freeGb: cfg.BOX_FREE_GB, tvUrl: cfg.BAZZY_TV_URL, signupOpen: cfg.BOX_SIGNUP === 'open' });
+    const site = siteHtml({ freeGb: cfg.BOX_FREE_GB, tvUrl: cfg.BAZZY_TV_URL, liveUrl: cfg.BAZZY_LIVE_URL, signupOpen: cfg.BOX_SIGNUP === 'open' });
     app.get('/', async (c, next) => {
       if (await ctx.sessions.read(c)) return next();
       c.header('Content-Security-Policy', SITE_CSP);

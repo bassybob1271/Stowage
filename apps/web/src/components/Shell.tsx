@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Menu, Search, Settings as SettingsIcon, Upload, X, Star, Clock, HardDrive, FolderUp, Wallet, ListMusic } from 'lucide-react';
+import { LogOut, Menu, Search, Settings as SettingsIcon, Upload, X, Star, Clock, HardDrive, FolderUp, Wallet, ListMusic, Tv, Radio } from 'lucide-react';
 import type { MountInfo } from '@stowage/shared';
 import { api } from '../api';
 import { href, navigate, useLocation } from '../lib/router';
@@ -16,7 +16,7 @@ import { Billing } from './Billing';
 import { PlaylistMaker } from './PlaylistMaker';
 
 /** `account` = signed in with a BazzyBox account (one private mount, plan & credits instead of mount settings). */
-export function Shell({ account = false }: { account?: boolean }) {
+export function Shell({ account = false, sites }: { account?: boolean; sites?: { tv: string | null; live: string | null } }) {
   const loc = useLocation();
   const qc = useQueryClient();
   const mounts = useQuery({ queryKey: ['mounts'], queryFn: () => api.mounts(), refetchInterval: 60_000 });
@@ -136,7 +136,7 @@ export function Shell({ account = false }: { account?: boolean }) {
               <X size={18} />
             </button>
           </div>
-          <Sidebar mounts={list} loading={mounts.isPending} active={loc.mount} onPlaylists={account ? () => (setDrawer(false), setPlaylists(true)) : undefined} />
+          <Sidebar mounts={list} loading={mounts.isPending} active={loc.mount} onPlaylists={account ? () => (setDrawer(false), setPlaylists(true)) : undefined} sites={sites} />
         </aside>
 
         <main className="flex-1 min-w-0 flex flex-col">
@@ -176,7 +176,7 @@ export function Shell({ account = false }: { account?: boolean }) {
   );
 }
 
-function Sidebar({ mounts, loading, active, onPlaylists }: { mounts: MountInfo[]; loading: boolean; active: string | null; onPlaylists?: () => void }) {
+function Sidebar({ mounts, loading, active, onPlaylists, sites }: { mounts: MountInfo[]; loading: boolean; active: string | null; onPlaylists?: () => void; sites?: { tv: string | null; live: string | null } }) {
   const recent = useStore(recentStore);
   const starred = useStore(starredStore);
   const go = (mount: string, path: string, isDir: boolean, name: string) => {
@@ -233,6 +233,23 @@ function Sidebar({ mounts, loading, active, onPlaylists }: { mounts: MountInfo[]
               <span className="truncate">{p.name}</span>
             </button>
           ))}
+        </section>
+      )}
+      {(sites?.tv || sites?.live) && (
+        <section className="mt-auto pt-2 border-t border-line">
+          <h3 className="px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Bazzy</h3>
+          {sites.tv && (
+            <a href={sites.tv} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover-row">
+              <Tv size={15} className="shrink-0 text-muted" />
+              <span className="flex-1">Bazzy TV</span>
+            </a>
+          )}
+          {sites.live && (
+            <a href={sites.live} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover-row">
+              <Radio size={15} className="shrink-0 text-[#ff3d5a]" />
+              <span className="flex-1">Bazzy Live</span>
+            </a>
+          )}
         </section>
       )}
     </nav>

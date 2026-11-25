@@ -26,5 +26,5 @@ export function App() {
 
   if (session.isPending) return <div className="h-full grid place-items-center text-muted text-sm">Loading…</div>;
   if (!authed) return <Login provider={session.data?.provider} bazzy={session.data?.bazzy === true} onSuccess={() => void qc.invalidateQueries({ queryKey: ['session'] })} />;
-  return <Shell account={session.data?.account === true} />;
+  return <Shell account={session.data?.account === true} sites={session.data?.sites} />;
 }
