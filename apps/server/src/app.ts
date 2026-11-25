@@ -20,6 +20,7 @@ import { BoxService, accountIdOf, accountIdOfMount, userMountId } from './box/se
 import { boxPublicRoutes, boxRoutes, shareRoute } from './box/routes.js';
 import { SITE_CSP, siteHtml, siteJs } from './box/site.js';
 import { bazzyEnabled, bazzyRoutes } from './box/bazzy.js';
+import { playlistRoutes, publicPlaylistRoutes } from './box/playlists.js';
 
 export interface AppContext {
   cfg: Config;
@@ -164,6 +165,7 @@ export function createApp(ctx: AppContext) {
   if (ctx.box) {
     app.route('/api', boxPublicRoutes(ctx, ctx.box));
     if (bazzyEnabled(cfg)) app.route('/api', bazzyRoutes(ctx, ctx.box));
+    app.route('/', publicPlaylistRoutes(ctx, ctx.box));
     app.on(['GET', 'HEAD'], '/s/:token/:name?', shareRoute(ctx, ctx.box));
   }
 
@@ -241,7 +243,10 @@ export function createApp(ctx: AppContext) {
   });
 
   app.route('/api/fs', fsRoutes(ctx));
-  if (ctx.box) app.route('/api/box', boxRoutes(ctx, ctx.box));
+  if (ctx.box) {
+    app.route('/api/box/playlists', playlistRoutes(ctx, ctx.box));
+    app.route('/api/box', boxRoutes(ctx, ctx.box));
+  }
 
   // tus hooks only see the Request, so carry the session subject on a header we set ourselves.
   const tus = createTus(ctx);

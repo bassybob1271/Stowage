@@ -64,6 +64,23 @@ export interface BoxShare {
   url: string;
 }
 
+export interface PlaylistTrack {
+  path: string;
+  title: string;
+  kind: 'audio' | 'video' | null;
+}
+export interface Playlist {
+  id: string;
+  title: string;
+  description: string;
+  tracks: PlaylistTrack[];
+  hasCover: boolean;
+  coverUrl: string | null;
+  shareUrl: string | null;
+  views: number;
+  updatedAt: string;
+}
+
 /** URL for streaming a file (path-style, so relative references like HLS segments resolve). */
 export function fileUrl(mount: string, path: string) {
   return `/api/fs/${enc(mount)}/file/${path.split('/').map(enc).join('/')}`;
@@ -87,6 +104,24 @@ export const api = {
     shares: () => call<{ shares: BoxShare[] }>('/api/box/shares'),
     share: (path: string, days = 7) => call<{ url: string; expiresAt: string }>('/api/box/shares', { method: 'POST', body: JSON.stringify({ path, days }) }),
     unshare: (token: string) => call(`/api/box/shares/${enc(token)}`, { method: 'DELETE' }),
+    playlists: {
+      list: () => call<{ playlists: Playlist[] }>('/api/box/playlists'),
+      get: (id: string) => call<Playlist>(`/api/box/playlists/${enc(id)}`),
+      create: (title: string, items: string[] = []) =>
+        call<Playlist>('/api/box/playlists', { method: 'POST', body: JSON.stringify({ title, items }) }),
+      update: (id: string, patch: { title?: string; description?: string; items?: string[] }) =>
+        call<Playlist>(`/api/box/playlists/${enc(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+      remove: (id: string) => call(`/api/box/playlists/${enc(id)}`, { method: 'DELETE' }),
+      setCover: async (id: string, blob: Blob) => {
+        const r = await fetch(`/api/box/playlists/${enc(id)}/cover`, { method: 'PUT', body: blob, headers: { 'content-type': blob.type }, credentials: 'same-origin' });
+        const body = (await r.json().catch(() => ({}))) as Playlist & { error?: string };
+        if (!r.ok) throw new Error(body.error ?? 'could not upload the picture');
+        return body as Playlist;
+      },
+      removeCover: (id: string) => call<Playlist>(`/api/box/playlists/${enc(id)}/cover`, { method: 'DELETE' }),
+      share: (id: string) => call<{ url: string }>(`/api/box/playlists/${enc(id)}/share`, { method: 'POST' }),
+      unshare: (id: string) => call(`/api/box/playlists/${enc(id)}/share`, { method: 'DELETE' }),
+    },
   },
   login: (code: string) => call<{ ok: true }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ code }) }),
   logout: () => call('/api/auth/logout', { method: 'POST' }),

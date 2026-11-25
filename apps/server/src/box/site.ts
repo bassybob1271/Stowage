@@ -248,6 +248,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       <li><b>Resumable uploads.</b> Multi-gigabyte files survive a dropped connection or a closed laptop.</li>
       <li><b>Play before you download.</b> Scrub video, audition mixes on a waveform player, page through PDFs.</li>
       <li><b>Send to clients.</b> Share links with Range support for streaming, ${sendGb}/GB past your allowance, compared with $0.25/GB on MASV.</li>
+      <li><b>Playlist Maker.</b> Pick mixes, stems or video, add a cover picture and send one link to a player page anyone can open.</li>
       <li><b>Next: publish to Bazzy TV.</b> Send a finished cut from your box straight to your channel. Coming soon.</li>
     </ul>
   </div>

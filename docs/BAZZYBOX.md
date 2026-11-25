@@ -49,6 +49,18 @@ The Bazzy TV video page (`apps/live`, live.bazzy.io) links to it from its header
 
 Uploads go in 8 MB resumable chunks, under Cloudflare's 100 MB request limit. Large downloads and share links through a free or Pro Cloudflare plan carry the same caveat as live video: fine for a modest audience, but heavy public traffic may need a paid plan or direct presigned B2 links (`DIRECT_TRANSFER=true`).
 
+## Playlist Maker
+
+The **Playlist Maker** button sits in the BazzyBox header and at the top of the sidebar. A playlist is an ordered list of audio and video files from the owner's own folder (any audio, plus video browsers play: MP4, M4V, WebM, MOV, OGV), with a name, an optional description and a cover picture. Pictures are resized in the browser to 1200 px JPEG, and the server accepts only real JPEG, PNG or WebP up to 1.5 MB.
+
+**Create share link** makes one public page at `/p/<token>`:
+- **The page:** cover, title, track list, Play and Shuffle, audio in a bottom bar and video inline. It carries Open Graph tags, so links unfurl with the cover in Messages, Slack and social apps.
+- **Streaming:** with Range support. Streamed bytes count against the owner's monthly share-link allowance, the same as single-file share links.
+- **Privacy:** the page shows no owner details and asks search engines not to index it.
+- **Turning sharing off:** **Stop sharing** kills the link at once. Sharing again makes a new link.
+
+Files must exist in the owner's folder and be playable when the playlist is saved. A track deleted later simply stops playing on the shared page. Code: `apps/server/src/box/playlists.ts` and `apps/web/src/components/PlaylistMaker.tsx`; tests in `apps/server/test/playlists.test.ts`.
+
 ## Sign in with Bazzy TV
 
 BazzyBox can sign people in with their Bazzy TV account, so whatever Bazzy TV accepts (email and password, Sign in with Apple, Sign in with Google) works here too. Bazzy TV is the OAuth 2.0 provider (`bassybob1271/bazzy-video`, branch `sign-in-apple-google`); BazzyBox is a confidential client using the authorization code flow with PKCE.

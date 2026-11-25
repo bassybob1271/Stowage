@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Menu, Search, Settings as SettingsIcon, Upload, X, Star, Clock, HardDrive, FolderUp, Wallet } from 'lucide-react';
+import { LogOut, Menu, Search, Settings as SettingsIcon, Upload, X, Star, Clock, HardDrive, FolderUp, Wallet, ListMusic } from 'lucide-react';
 import type { MountInfo } from '@stowage/shared';
 import { api } from '../api';
 import { href, navigate, useLocation } from '../lib/router';
@@ -13,6 +13,7 @@ import { MiniPlayer } from './MiniPlayer';
 import { DialogHost } from './Dialogs';
 import { Settings } from './Settings';
 import { Billing } from './Billing';
+import { PlaylistMaker } from './PlaylistMaker';
 
 /** `account` = signed in with a BazzyBox account (one private mount, plan & credits instead of mount settings). */
 export function Shell({ account = false }: { account?: boolean }) {
@@ -23,6 +24,7 @@ export function Shell({ account = false }: { account?: boolean }) {
   const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState(false);
   const [billing, setBilling] = useState(() => account && new URLSearchParams(location.search).has('credits'));
+  const [playlists, setPlaylists] = useState(() => account && new URLSearchParams(location.search).has('playlists'));
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
 
@@ -89,6 +91,17 @@ export function Shell({ account = false }: { account?: boolean }) {
           />
         </div>
         <div className="flex items-center gap-1 ml-auto">
+          {account && (
+            <button
+              className="btn border-[#ff3d5a] text-[#ff3d5a] hover:bg-[#ff3d5a] hover:text-white"
+              onClick={() => setPlaylists(true)}
+              title="Playlist Maker: share your music and video with one link"
+              aria-label="Playlist Maker"
+            >
+              <ListMusic size={16} />
+              <span className="hidden sm:inline">Playlist Maker</span>
+            </button>
+          )}
           <button className="btn btn-primary" disabled={!writable} onClick={() => fileInput.current?.click()} title={writable ? 'Upload files' : 'Mount is read-only'}>
             <Upload size={16} />
             <span className="hidden sm:inline">Upload</span>
@@ -123,7 +136,7 @@ export function Shell({ account = false }: { account?: boolean }) {
               <X size={18} />
             </button>
           </div>
-          <Sidebar mounts={list} loading={mounts.isPending} active={loc.mount} />
+          <Sidebar mounts={list} loading={mounts.isPending} active={loc.mount} onPlaylists={account ? () => (setDrawer(false), setPlaylists(true)) : undefined} />
         </aside>
 
         <main className="flex-1 min-w-0 flex flex-col">
@@ -142,6 +155,15 @@ export function Shell({ account = false }: { account?: boolean }) {
       <UploadTray />
       <DialogHost />
       {settings && <Settings mounts={list} onClose={() => setSettings(false)} />}
+      {playlists && list[0] && (
+        <PlaylistMaker
+          mount={list[0].id}
+          onClose={() => {
+            setPlaylists(false);
+            if (location.search) history.replaceState(null, '', location.pathname);
+          }}
+        />
+      )}
       {billing && (
         <Billing
           onClose={() => {
@@ -154,7 +176,7 @@ export function Shell({ account = false }: { account?: boolean }) {
   );
 }
 
-function Sidebar({ mounts, loading, active }: { mounts: MountInfo[]; loading: boolean; active: string | null }) {
+function Sidebar({ mounts, loading, active, onPlaylists }: { mounts: MountInfo[]; loading: boolean; active: string | null; onPlaylists?: () => void }) {
   const recent = useStore(recentStore);
   const starred = useStore(starredStore);
   const go = (mount: string, path: string, isDir: boolean, name: string) => {
@@ -163,6 +185,15 @@ function Sidebar({ mounts, loading, active }: { mounts: MountInfo[]; loading: bo
   };
   return (
     <nav className="flex-1 overflow-y-auto p-2 text-sm flex flex-col gap-4" aria-label="Sidebar">
+      {onPlaylists && (
+        <button
+          onClick={onPlaylists}
+          className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#ff3d5a] text-white font-semibold text-left hover:brightness-110"
+        >
+          <ListMusic size={16} className="shrink-0" />
+          <span className="flex-1">Playlist Maker</span>
+        </button>
+      )}
       <section>
         <h3 className="px-2 mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Mounts</h3>
         {loading && <div className="px-2 text-muted">Loading…</div>}
