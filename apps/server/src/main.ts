@@ -46,6 +46,11 @@ async function reconcile() {
     }
   }
 }
+/** BazzyBox: daily storage meter, plan renewals, monthly send allowance resets. */
+const meterTimer =
+  ctx.box && cfg.BOX_METER_INTERVAL_SEC > 0 ? setInterval(() => void ctx.box!.meterAll(), cfg.BOX_METER_INTERVAL_SEC * 1000) : undefined;
+if (ctx.box) log.info('box.enabled', { mount: cfg.BOX_MOUNT, payments: cfg.STRIPE_SECRET_KEY ? 'stripe' : cfg.BOX_DEV_CREDITS ? 'dev' : 'none' });
+
 const reconcileTimer =
   cfg.RECONCILE_INTERVAL_SEC > 0 ? setInterval(() => void reconcile(), cfg.RECONCILE_INTERVAL_SEC * 1000) : undefined;
 
@@ -53,6 +58,7 @@ async function shutdown(sig: string) {
   log.info('server.shutdown', { sig });
   clearInterval(sweep);
   if (reconcileTimer) clearInterval(reconcileTimer);
+  if (meterTimer) clearInterval(meterTimer);
   server.close();
   await mounts.closeAll();
   await db.close();

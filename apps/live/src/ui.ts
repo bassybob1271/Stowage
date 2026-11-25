@@ -1,7 +1,7 @@
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** Single page: stream list at "/", player at "/watch/<slug>". No inline script (CSP script-src 'self'). */
-export function pageHtml(o: { title: string; slug: string | null }) {
+export function pageHtml(o: { title: string; slug: string | null; boxUrl?: string }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -16,6 +16,11 @@ export function pageHtml(o: { title: string; slug: string | null }) {
   html, body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   header { display:flex; align-items:center; gap:10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
   header a { color: inherit; text-decoration: none; font-weight: 650; letter-spacing: -0.01em; }
+  header .box { margin-left: auto; display:inline-flex; align-items:center; gap:8px; min-height:40px; padding: 8px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); font-size: 14px; }
+  header .box:hover { border-color: var(--accent); }
+  header .box span { color: var(--muted); font-weight: 500; }
+  @media (max-width: 520px) { header .box span { display: none; } }
+  header .box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .dot { width:10px; height:10px; border-radius:50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 25%, transparent); }
   main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   .player { position: relative; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16/9; }
@@ -39,7 +44,7 @@ export function pageHtml(o: { title: string; slug: string | null }) {
 </style>
 </head>
 <body data-slug="${o.slug ? esc(o.slug) : ''}">
-<header><span class="dot" aria-hidden="true"></span><a href="/">${esc(o.title)}</a></header>
+<header><span class="dot" aria-hidden="true"></span><a href="/">${esc(o.title)}</a>${o.boxUrl ? `<a class="box" href="${esc(o.boxUrl)}">BazzyBox <span>storage for creators</span></a>` : ''}</header>
 <main id="app">${o.slug ? `
   <div class="player">
     <video id="video" controls playsinline autoplay muted></video>

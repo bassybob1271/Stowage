@@ -57,6 +57,35 @@ export const sqliteMounts = s.sqliteTable('mounts', {
   createdAt: s.text('created_at').notNull(),
 });
 
+
+// ---------- BazzyBox (BAZZYBOX=true) ----------
+export const sqliteAccounts = s.sqliteTable('accounts', {
+  id: s.text('id').primaryKey(),
+  email: s.text('email').notNull().unique(),
+  passwordHash: s.text('password_hash').notNull(),
+  plan: s.text('plan').notNull(),
+  walletMc: s.integer('wallet_mc').notNull().default(0),
+  periodStart: s.integer('period_start'),
+  periodEnd: s.integer('period_end'),
+  usedBytes: s.integer('used_bytes').notNull().default(0),
+  usageAt: s.integer('usage_at'),
+  meteredAt: s.integer('metered_at'),
+  sendBytes: s.integer('send_bytes').notNull().default(0),
+  sendPeriodStart: s.integer('send_period_start'),
+  createdAt: s.text('created_at').notNull(),
+});
+
+export const sqliteLedger = s.sqliteTable('ledger', {
+  id: s.text('id').primaryKey(),
+  accountId: s.text('account_id').notNull(),
+  deltaMc: s.integer('delta_mc').notNull(),
+  kind: s.text('kind').notNull(),
+  note: s.text('note').notNull(),
+  /** External reference (Stripe session id) — unique, makes webhook credits idempotent. */
+  ref: s.text('ref').unique(),
+  createdAt: s.text('created_at').notNull(),
+});
+
 // ---------- Postgres ----------
 export const pgFiles = p.pgTable(
   'files',
@@ -108,6 +137,33 @@ export const pgMounts = p.pgTable('mounts', {
   createdAt: p.text('created_at').notNull(),
 });
 
+
+export const pgAccounts = p.pgTable('accounts', {
+  id: p.text('id').primaryKey(),
+  email: p.text('email').notNull().unique(),
+  passwordHash: p.text('password_hash').notNull(),
+  plan: p.text('plan').notNull(),
+  walletMc: p.bigint('wallet_mc', { mode: 'number' }).notNull().default(0),
+  periodStart: p.bigint('period_start', { mode: 'number' }),
+  periodEnd: p.bigint('period_end', { mode: 'number' }),
+  usedBytes: p.bigint('used_bytes', { mode: 'number' }).notNull().default(0),
+  usageAt: p.bigint('usage_at', { mode: 'number' }),
+  meteredAt: p.bigint('metered_at', { mode: 'number' }),
+  sendBytes: p.bigint('send_bytes', { mode: 'number' }).notNull().default(0),
+  sendPeriodStart: p.bigint('send_period_start', { mode: 'number' }),
+  createdAt: p.text('created_at').notNull(),
+});
+
+export const pgLedger = p.pgTable('ledger', {
+  id: p.text('id').primaryKey(),
+  accountId: p.text('account_id').notNull(),
+  deltaMc: p.bigint('delta_mc', { mode: 'number' }).notNull(),
+  kind: p.text('kind').notNull(),
+  note: p.text('note').notNull(),
+  ref: p.text('ref').unique(),
+  createdAt: p.text('created_at').notNull(),
+});
+
 /** Idempotent DDL. Kept as plain SQL so boot needs no migration tool. */
 export function ddl(dialect: 'sqlite' | 'pg'): string[] {
   const big = dialect === 'pg' ? 'BIGINT' : 'INTEGER';
@@ -127,5 +183,13 @@ export function ddl(dialect: 'sqlite' | 'pg'): string[] {
     `CREATE TABLE IF NOT EXISTS mounts (
       id TEXT PRIMARY KEY, label TEXT NOT NULL, kind TEXT NOT NULL, read_only ${bool} NOT NULL,
       config_enc TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS accounts (
+      id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, plan TEXT NOT NULL,
+      wallet_mc ${big} NOT NULL DEFAULT 0, period_start ${big}, period_end ${big}, used_bytes ${big} NOT NULL DEFAULT 0,
+      usage_at ${big}, metered_at ${big}, send_bytes ${big} NOT NULL DEFAULT 0, send_period_start ${big}, created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS ledger (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, delta_mc ${big} NOT NULL, kind TEXT NOT NULL, note TEXT NOT NULL,
+      ref TEXT UNIQUE, created_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS ledger_account ON ledger (account_id, created_at)`,
   ];
 }

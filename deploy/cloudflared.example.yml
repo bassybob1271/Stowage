@@ -1,0 +1,16 @@
+# Cloudflare Tunnel for Bazzy: one tunnel, two hostnames.
+# Copy to deploy/cloudflared/native.yml (that folder is gitignored; it also holds the credentials JSON).
+# Then route DNS once per hostname:
+#   cloudflared tunnel route dns <tunnel-name> live.bazzy.io
+#   cloudflared tunnel route dns <tunnel-name> box.bazzy.io
+tunnel: <TUNNEL-ID>
+credentials-file: deploy/cloudflared/<TUNNEL-ID>.json
+
+ingress:
+  # Bazzy TV live video (apps/live, LIVE_PORT)
+  - hostname: live.bazzy.io
+    service: http://127.0.0.1:8790
+  # BazzyBox website + file app (apps/server with BAZZYBOX=true, PORT)
+  - hostname: box.bazzy.io
+    service: http://127.0.0.1:8787
+  - service: http_status:404

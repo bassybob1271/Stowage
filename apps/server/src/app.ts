@@ -15,6 +15,10 @@ import { createTus } from './tus.js';
 import { serveFile } from './serve.js';
 import { verifyToken } from './crypto.js';
 import { log } from './log.js';
+import type { Mount } from './mounts.js';
+import { BoxService, accountIdOf, accountIdOfMount, userMountId } from './box/service.js';
+import { boxPublicRoutes, boxRoutes, shareRoute } from './box/routes.js';
+import { SITE_CSP, siteHtml, siteJs } from './box/site.js';
 
 export interface AppContext {
   cfg: Config;
@@ -23,9 +27,30 @@ export interface AppContext {
   auth: AuthProvider;
   sessions: Sessions;
   limiter: LoginLimiter;
+  /** Present when BAZZYBOX=true: accounts, per-user storage, plans and credits. */
+  box?: BoxService;
+}
+
+/** Header the server sets on tus requests to carry the session subject. Client copies are stripped. */
+export const SUB_HEADER = 'x-stowage-sub';
+
+/**
+ * Find a mount for a session subject. The owner (code gate) sees every mount;
+ * a BazzyBox account sees only its own private mount, box-<id>.
+ */
+export function resolveMount(ctx: AppContext, sub: string | undefined, id: string): Mount | undefined {
+  const acct = accountIdOf(sub);
+  if (ctx.box && acct) return id === userMountId(acct) ? ctx.box.mountFor(acct) : undefined;
+  if (ctx.box && !sub) return undefined;
+  return ctx.mounts.get(id);
 }
 
 export async function createContext(cfg: Config, db: Db, mounts: MountRegistry): Promise<AppContext> {
+  let box: BoxService | undefined;
+  if (cfg.BAZZYBOX) {
+    box = new BoxService(cfg, db, mounts);
+    box.validate();
+  }
   return {
     cfg,
     db,
@@ -33,6 +58,7 @@ export async function createContext(cfg: Config, db: Db, mounts: MountRegistry):
     auth: await CodeGateProvider.create(cfg.ACCESS_CODE),
     sessions: new Sessions(cfg),
     limiter: new LoginLimiter(5),
+    box,
   };
 }
 
@@ -123,13 +149,27 @@ export function createApp(ctx: AppContext) {
     return c.json({ ok: true });
   });
 
-  app.get('/api/auth/session', async (c) => c.json({ authenticated: Boolean(await ctx.sessions.read(c)), provider: ctx.auth.name }));
+  app.get('/api/auth/session', async (c) => {
+    const s = await ctx.sessions.read(c);
+    return c.json({
+      authenticated: Boolean(s),
+      provider: ctx.box ? 'box' : ctx.auth.name,
+      account: Boolean(accountIdOf(s?.sub)),
+      admin: s?.sub === 'owner',
+    });
+  });
+
+  if (ctx.box) {
+    app.route('/api', boxPublicRoutes(ctx, ctx.box));
+    app.on(['GET', 'HEAD'], '/s/:token/:name?', shareRoute(ctx, ctx.box));
+  }
 
   /** Token-authenticated, cookie-less content route (served from CONTENT_ORIGIN when configured). */
   app.on(['GET', 'HEAD'], '/c/:token/:name?', async (c) => {
     const t = verifyToken<{ m: string; p: string; e: number }>(cfg.SESSION_SECRET, c.req.param('token'));
     if (!t || t.e < Date.now()) return c.text('link expired', 403);
-    const m = ctx.mounts.get(t.m);
+    const owner = accountIdOfMount(t.m);
+    const m = owner && ctx.box ? ctx.box.mountFor(owner) : ctx.mounts.get(t.m);
     const st = m && (await m.adapter.stat(t.p));
     if (!m || !st || st.isDir) return c.text('not found', 404);
     return serveFile(c, m.adapter, st);
@@ -137,16 +177,24 @@ export function createApp(ctx: AppContext) {
 
   // ---------- authenticated ----------
   app.use('/api/*', async (c, next) => {
-    if (c.req.path.startsWith('/api/auth/') || c.req.path === '/api/health') return next();
+    if (c.req.path.startsWith('/api/auth/') || c.req.path === '/api/health' || c.req.path.startsWith('/api/box/webhook/')) return next();
     return ctx.sessions.middleware()(c, next);
   });
 
+  /** Mount management is for the owner only; BazzyBox accounts get one private mount. */
+  const sub = (c: Context) => c.get('user' as never) as string | undefined;
+  const ownerOnly = (c: Context) => (accountIdOf(sub(c)) ? c.json({ error: 'forbidden' }, 403) : null);
+
   app.get('/api/mounts', async (c) => {
     await ctx.mounts.checkHealth(c.req.query('fresh') ? 0 : 30_000);
+    const acct = accountIdOf(sub(c));
+    if (ctx.box && acct) return c.json({ mounts: [ctx.box.mountInfo(acct)], directTransfer: cfg.DIRECT_TRANSFER });
     return c.json({ mounts: ctx.mounts.all().map((m) => ctx.mounts.info(m)), directTransfer: cfg.DIRECT_TRANSFER });
   });
 
   app.post('/api/mounts', async (c) => {
+    const no = ownerOnly(c);
+    if (no) return no;
     const def = mountDefSchema.parse(await c.req.json());
     if (ctx.mounts.get(def.id)) return c.json({ error: 'mount id already exists' }, 409);
     await ctx.mounts.create(def);
@@ -154,6 +202,8 @@ export function createApp(ctx: AppContext) {
   });
 
   app.delete('/api/mounts/:id', async (c) => {
+    const no = ownerOnly(c);
+    if (no) return no;
     const ok = await ctx.mounts.remove(c.req.param('id'));
     return ok ? c.json({ ok: true }) : c.json({ error: 'not found' }, 404);
   });
@@ -163,7 +213,8 @@ export function createApp(ctx: AppContext) {
     const term = (c.req.query('q') ?? '').trim();
     if (term.length < 2) return c.json({ results: [] });
     const f = ctx.db.t.files;
-    const mount = c.req.query('mount');
+    const acct = accountIdOf(sub(c));
+    const mount = ctx.box && acct ? userMountId(acct) : c.req.query('mount');
     const pattern = `%${escapeLike(term.toLowerCase())}%`;
     const where = and(
       sql`lower(${f.name}) LIKE ${pattern} ESCAPE '\\'`,
@@ -187,12 +238,39 @@ export function createApp(ctx: AppContext) {
   });
 
   app.route('/api/fs', fsRoutes(ctx));
+  if (ctx.box) app.route('/api/box', boxRoutes(ctx, ctx.box));
 
+  // tus hooks only see the Request, so carry the session subject on a header we set ourselves.
   const tus = createTus(ctx);
-  app.all('/api/tus', (c) => tus.handleWeb(c.req.raw));
-  app.all('/api/tus/*', (c) => tus.handleWeb(c.req.raw));
+  const withSub = (c: Context) => {
+    const r = c.req.raw;
+    const headers = new Headers(r.headers);
+    headers.delete(SUB_HEADER);
+    const s = sub(c);
+    if (s) headers.set(SUB_HEADER, s);
+    return new Request(r.url, { method: r.method, headers, body: r.body, duplex: 'half' } as RequestInit);
+  };
+  app.all('/api/tus', (c) => tus.handleWeb(withSub(c)));
+  app.all('/api/tus/*', (c) => tus.handleWeb(withSub(c)));
 
   app.all('/api/*', (c) => c.json({ error: 'not found' }, 404));
+
+  // ---------- BazzyBox public website ----------
+  // Visitors without a session get the marketing site at "/"; signed-in users fall through to the app.
+  if (ctx.box) {
+    const site = siteHtml({ freeGb: cfg.BOX_FREE_GB, tvUrl: cfg.BAZZY_TV_URL, signupOpen: cfg.BOX_SIGNUP === 'open' });
+    app.get('/', async (c, next) => {
+      if (await ctx.sessions.read(c)) return next();
+      c.header('Content-Security-Policy', SITE_CSP);
+      c.header('Cache-Control', 'no-cache');
+      return c.html(site);
+    });
+    app.get('/site.js', (c) => {
+      c.header('Content-Type', 'text/javascript; charset=utf-8');
+      c.header('Cache-Control', 'public, max-age=3600');
+      return c.body(siteJs);
+    });
+  }
 
   // ---------- static web app ----------
   const dist = resolve(cfg.WEB_DIST);

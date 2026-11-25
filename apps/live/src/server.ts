@@ -78,11 +78,11 @@ export function createServer(cfg: Config, sup: Supervisor) {
   });
   app.get('/static/app.js', (c) => c.body(appJs, 200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }));
 
-  app.get('/', (c) => c.html(pageHtml({ title: cfg.LIVE_TITLE, slug: null })));
+  app.get('/', (c) => c.html(pageHtml({ title: cfg.LIVE_TITLE, slug: null, boxUrl: cfg.LIVE_BOX_URL })));
   app.get('/watch/:slug', (c) => {
     const slug = c.req.param('slug');
     if (!/^[a-z0-9_-]+$/.test(slug)) return c.text('bad stream', 400);
-    return c.html(pageHtml({ title: cfg.LIVE_TITLE, slug }));
+    return c.html(pageHtml({ title: cfg.LIVE_TITLE, slug, boxUrl: cfg.LIVE_BOX_URL }));
   });
 
   return app;

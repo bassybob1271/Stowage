@@ -34,6 +34,23 @@ const schema = z.object({
   /** Paths are relative to the working directory (the repo root in dev). */
   WEB_DIST: z.string().default('./apps/web/dist'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+
+  // ---------- BazzyBox (multi-user, plans, credits) ----------
+  /** Turn on email/password accounts, per-user storage, plans and the credits wallet. */
+  BAZZYBOX: bool.default('false'),
+  /** Mount (from mounts.yaml) that holds every user's files, each under u/<id>/. Point it at IDrive e2. */
+  BOX_MOUNT: z.string().default('box'),
+  BOX_FREE_GB: z.coerce.number().positive().default(10),
+  /** open = anyone can sign up; closed = only existing accounts. */
+  BOX_SIGNUP: z.enum(['open', 'closed']).default('open'),
+  /** Bazzy TV video site, linked from the BazzyBox website. Empty hides the link. */
+  BAZZY_TV_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://live.bazzy.io'),
+  /** Grant credits without payment (local testing only; refused in production). */
+  BOX_DEV_CREDITS: bool.default('false'),
+  STRIPE_SECRET_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
+  STRIPE_WEBHOOK_SECRET: z.string().optional().or(z.literal('').transform(() => undefined)),
+  /** How often the storage meter and plan renewals run. */
+  BOX_METER_INTERVAL_SEC: z.coerce.number().int().nonnegative().default(3600),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -44,6 +61,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     const lines = r.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`);
     // Fail fast with an actionable message.
     console.error(`\nInvalid configuration:\n${lines.join('\n')}\n\nSee deploy/.env.example.\n`);
+    process.exit(1);
+  }
+  if (r.data.BOX_DEV_CREDITS && r.data.NODE_ENV === 'production') {
+    console.error('\nInvalid configuration:\n  - BOX_DEV_CREDITS: free credits are refused when NODE_ENV=production\n');
     process.exit(1);
   }
   return r.data;

@@ -10,6 +10,8 @@ type Tables = {
   shares: typeof schema.sqliteShares;
   uploads: typeof schema.sqliteUploads;
   mounts: typeof schema.sqliteMounts;
+  accounts: typeof schema.sqliteAccounts;
+  ledger: typeof schema.sqliteLedger;
 };
 
 /**
@@ -32,7 +34,7 @@ export async function openDb(url: string): Promise<Db> {
     return {
       dialect: 'pg',
       orm: drizzle(client) as unknown as BetterSQLite3Database,
-      t: { files: schema.pgFiles, shares: schema.pgShares, uploads: schema.pgUploads, mounts: schema.pgMounts } as unknown as Tables,
+      t: { files: schema.pgFiles, shares: schema.pgShares, uploads: schema.pgUploads, mounts: schema.pgMounts, accounts: schema.pgAccounts, ledger: schema.pgLedger } as unknown as Tables,
       close: () => client.end(),
     };
   }
@@ -47,7 +49,7 @@ export async function openDb(url: string): Promise<Db> {
   return {
     dialect: 'sqlite',
     orm: drizzle(sqlite),
-    t: { files: schema.sqliteFiles, shares: schema.sqliteShares, uploads: schema.sqliteUploads, mounts: schema.sqliteMounts },
+    t: { files: schema.sqliteFiles, shares: schema.sqliteShares, uploads: schema.sqliteUploads, mounts: schema.sqliteMounts, accounts: schema.sqliteAccounts, ledger: schema.sqliteLedger },
     close: async () => {
       sqlite.close();
     },
