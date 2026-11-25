@@ -19,6 +19,7 @@ import type { Mount } from './mounts.js';
 import { BoxService, accountIdOf, accountIdOfMount, userMountId } from './box/service.js';
 import { boxPublicRoutes, boxRoutes, shareRoute } from './box/routes.js';
 import { SITE_CSP, siteHtml, siteJs } from './box/site.js';
+import { bazzyEnabled, bazzyRoutes } from './box/bazzy.js';
 
 export interface AppContext {
   cfg: Config;
@@ -156,11 +157,13 @@ export function createApp(ctx: AppContext) {
       provider: ctx.box ? 'box' : ctx.auth.name,
       account: Boolean(accountIdOf(s?.sub)),
       admin: s?.sub === 'owner',
+      bazzy: Boolean(ctx.box) && bazzyEnabled(cfg),
     });
   });
 
   if (ctx.box) {
     app.route('/api', boxPublicRoutes(ctx, ctx.box));
+    if (bazzyEnabled(cfg)) app.route('/api', bazzyRoutes(ctx, ctx.box));
     app.on(['GET', 'HEAD'], '/s/:token/:name?', shareRoute(ctx, ctx.box));
   }
 

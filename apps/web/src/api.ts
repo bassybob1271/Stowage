@@ -32,6 +32,8 @@ export interface Session {
   provider?: 'box' | 'code';
   account?: boolean;
   admin?: boolean;
+  /** "Sign in with Bazzy TV" is configured. */
+  bazzy?: boolean;
 }
 
 export interface BoxPlan {

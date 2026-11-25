@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../api';
 
-export function Login({ onSuccess, provider }: { onSuccess: () => void; provider?: 'box' | 'code' }) {
+export function Login({ onSuccess, provider, bazzy = false }: { onSuccess: () => void; provider?: 'box' | 'code'; bazzy?: boolean }) {
   const [ownerGate, setOwnerGate] = useState(false);
-  if (provider === 'box' && !ownerGate) return <BoxLogin onSuccess={onSuccess} onOwner={() => setOwnerGate(true)} />;
+  if (provider === 'box' && !ownerGate) return <BoxLogin onSuccess={onSuccess} onOwner={() => setOwnerGate(true)} bazzy={bazzy} />;
   return <CodeLogin onSuccess={onSuccess} />;
 }
 
@@ -77,12 +77,13 @@ function CodeLogin({ onSuccess }: { onSuccess: () => void }) {
 }
 
 /** BazzyBox: email + password, with sign-up. The owner can still use the access code. */
-function BoxLogin({ onSuccess, onOwner }: { onSuccess: () => void; onOwner: () => void }) {
+function BoxLogin({ onSuccess, onOwner, bazzy }: { onSuccess: () => void; onOwner: () => void; bazzy: boolean }) {
   // The public site links to /signup and /login; land on the matching tab.
   const [mode, setMode] = useState<'in' | 'up'>(() => (window.location.pathname === '/signup' ? 'up' : 'in'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // A failed "Sign in with Bazzy TV" comes back as /login?error=…
+  const [error, setError] = useState<string | null>(() => new URLSearchParams(window.location.search).get('error'));
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
@@ -111,6 +112,17 @@ function BoxLogin({ onSuccess, onOwner }: { onSuccess: () => void; onOwner: () =
         <p className="text-sm text-muted text-center mb-2">
           Storage for filmmakers and musicians. 3 TB for $9.99, downgrade any day.
         </p>
+        {bazzy && (
+          <>
+            <a href="/api/auth/bazzy/start" className="btn btn-primary justify-center py-2.5">
+              Sign in with Bazzy TV
+            </a>
+            <p className="text-xs text-muted text-center -mt-1">Uses your Bazzy TV login, including Apple or Google.</p>
+            <div className="flex items-center gap-3 text-xs text-muted">
+              <span className="h-px flex-1 bg-line" />or use email<span className="h-px flex-1 bg-line" />
+            </div>
+          </>
+        )}
         <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-app border border-line" role="tablist">
           {(['in', 'up'] as const).map((m) => (
             <button key={m} type="button" role="tab" aria-selected={mode === m} className={`btn justify-center ${mode === m ? 'btn-primary' : ''}`} onClick={() => setMode(m)}>

@@ -69,6 +69,10 @@ export class BoxService {
   // ---------- accounts ----------
 
   async signup(emailRaw: string, password: string): Promise<Account> {
+    return this.createAccount(emailRaw, password);
+  }
+
+  private async createAccount(emailRaw: string, password: string): Promise<Account> {
     if (this.cfg.BOX_SIGNUP === 'closed') throw new BoxError(403, 'sign-ups are closed');
     const email = emailRaw.trim().toLowerCase();
     const t = this.db.t.accounts;
@@ -91,6 +95,36 @@ export class BoxService {
     await this.db.orm.insert(t).values(row);
     log.info('box.signup', { account: row.id });
     return row as Account;
+  }
+
+  /**
+   * "Sign in with Bazzy TV". A known Bazzy user gets their linked account. Otherwise a Bazzy-verified
+   * email joins the BazzyBox account with that email, or a new account is made (with an unusable
+   * password: they sign in through Bazzy TV). An unverified email that matches an existing account
+   * is refused, so nobody can claim someone else's files by registering their address on Bazzy TV.
+   */
+  async signInWithBazzy(u: { sub: string; email?: string; emailVerified?: boolean }): Promise<Account> {
+    const links = this.db.t.accountLinks;
+    const linkId = `bazzy:${u.sub}`;
+    const [link] = await this.db.orm.select().from(links).where(eq(links.id, linkId));
+    if (link) return this.get(link.accountId);
+
+    if (!u.email) throw new BoxError(400, 'Bazzy TV did not share an email address');
+    const email = u.email.trim().toLowerCase();
+    const t = this.db.t.accounts;
+    const [existing] = await this.db.orm.select().from(t).where(eq(t.email, email));
+    let account: Account;
+    if (existing) {
+      if (!u.emailVerified) {
+        throw new BoxError(409, 'A BazzyBox account already uses this email. Sign in with your password, or verify your email on Bazzy TV first.', 'email_taken');
+      }
+      account = existing as Account;
+    } else {
+      account = await this.createAccount(email, randomBytes(32).toString('base64url'));
+    }
+    await this.db.orm.insert(links).values({ id: linkId, provider: 'bazzy', subject: u.sub, accountId: account.id, createdAt: new Date(this.now()).toISOString() });
+    log.info('box.bazzy_link', { account: account.id, created: !existing });
+    return account;
   }
 
   /** Constant-time-ish: always runs one argon2 verify so unknown emails cost the same. */

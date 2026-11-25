@@ -86,6 +86,15 @@ export const sqliteLedger = s.sqliteTable('ledger', {
   createdAt: s.text('created_at').notNull(),
 });
 
+/** Outside sign-ins linked to a BazzyBox account (Bazzy TV today). id = `${provider}:${subject}`. */
+export const sqliteAccountLinks = s.sqliteTable('account_links', {
+  id: s.text('id').primaryKey(),
+  provider: s.text('provider').notNull(),
+  subject: s.text('subject').notNull(),
+  accountId: s.text('account_id').notNull(),
+  createdAt: s.text('created_at').notNull(),
+});
+
 // ---------- Postgres ----------
 export const pgFiles = p.pgTable(
   'files',
@@ -164,6 +173,14 @@ export const pgLedger = p.pgTable('ledger', {
   createdAt: p.text('created_at').notNull(),
 });
 
+export const pgAccountLinks = p.pgTable('account_links', {
+  id: p.text('id').primaryKey(),
+  provider: p.text('provider').notNull(),
+  subject: p.text('subject').notNull(),
+  accountId: p.text('account_id').notNull(),
+  createdAt: p.text('created_at').notNull(),
+});
+
 /** Idempotent DDL. Kept as plain SQL so boot needs no migration tool. */
 export function ddl(dialect: 'sqlite' | 'pg'): string[] {
   const big = dialect === 'pg' ? 'BIGINT' : 'INTEGER';
@@ -191,5 +208,8 @@ export function ddl(dialect: 'sqlite' | 'pg'): string[] {
       id TEXT PRIMARY KEY, account_id TEXT NOT NULL, delta_mc ${big} NOT NULL, kind TEXT NOT NULL, note TEXT NOT NULL,
       ref TEXT UNIQUE, created_at TEXT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS ledger_account ON ledger (account_id, created_at)`,
+    `CREATE TABLE IF NOT EXISTS account_links (
+      id TEXT PRIMARY KEY, provider TEXT NOT NULL, subject TEXT NOT NULL, account_id TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS account_links_account ON account_links (account_id)`,
   ];
 }

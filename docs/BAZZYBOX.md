@@ -49,6 +49,25 @@ The Bazzy TV video page (`apps/live`, live.bazzy.io) links to it from its header
 
 Uploads go in 8 MB resumable chunks, under Cloudflare's 100 MB request limit. Large downloads and share links through a free or Pro Cloudflare plan carry the same caveat as live video: fine for a modest audience, but heavy public traffic may need a paid plan or direct presigned e2 links (`DIRECT_TRANSFER=true`).
 
+## Sign in with Bazzy TV
+
+BazzyBox can sign people in with their Bazzy TV account, so whatever Bazzy TV accepts (email and password, Sign in with Apple, Sign in with Google) works here too. Bazzy TV is the OAuth 2.0 provider (`bassybob1271/bazzy-video`, branch `sign-in-apple-google`); BazzyBox is a confidential client using the authorization code flow with PKCE.
+
+1. "Sign in with Bazzy TV" calls `GET /api/auth/bazzy/start`. That keeps state and the PKCE verifier in a signed cookie, then redirects to `{BAZZY_AUTH_URL}/oauth/authorize`.
+2. Bazzy TV signs the person in if needed. BazzyBox is registered as trusted, so there's no consent click. Bazzy TV then sends the browser back to `/api/auth/bazzy/callback?code=…`.
+3. The server swaps the code at `/api/v1/oauth/token` (client secret + verifier) and reads `/api/v1/oauth/userinfo`. Then it links or creates the BazzyBox account and starts the usual session.
+
+**Account matching.** Links live in the `account_links` table (`bazzy:<user id>`), so a later email change on Bazzy TV doesn't matter. On a first sign-in:
+- If Bazzy TV has **verified** the email (true for Apple and Google accounts), it joins the BazzyBox account with that email.
+- If the email is **unverified** and already belongs to a BazzyBox account, it's refused, so nobody can claim someone else's files by registering their address on Bazzy TV.
+- Otherwise a new Free account is made. Its password is unusable; that person signs in through Bazzy TV.
+
+**Setup.**
+- **BazzyBox `.env`:** `BAZZY_AUTH_URL` (the Bazzy TV website), `BAZZY_CLIENT_ID=bazzybox`, `BAZZY_CLIENT_SECRET`, and `APP_ORIGIN=https://box.bazzy.io`.
+- **Bazzy TV `.env`:** add the same client to `OAUTH_CLIENTS` with redirect URI `https://box.bazzy.io/api/auth/bazzy/callback`.
+
+The button appears on the BazzyBox sign-in page once these are set. Failed sign-ins come back to `/login?error=…`.
+
 ## Operating it
 
 - **Backing store:** `BOX_MOUNT` must be an `s3` mount (IDrive e2 in production) or `local` (development). Each user gets a scoped adapter rooted at `u/<id>/`. Keep a second copy of the bucket (for example nightly rclone to Backblaze B2 or a Hetzner Storage Box) for irreplaceable masters.
