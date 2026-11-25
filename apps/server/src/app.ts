@@ -18,6 +18,7 @@ import { log } from './log.js';
 import type { Mount } from './mounts.js';
 import { BoxService, accountIdOf, accountIdOfMount, userMountId } from './box/service.js';
 import { boxPublicRoutes, boxRoutes, shareRoute } from './box/routes.js';
+import { SITE_CSP, siteHtml, siteJs } from './box/site.js';
 
 export interface AppContext {
   cfg: Config;
@@ -253,6 +254,23 @@ export function createApp(ctx: AppContext) {
   app.all('/api/tus/*', (c) => tus.handleWeb(withSub(c)));
 
   app.all('/api/*', (c) => c.json({ error: 'not found' }, 404));
+
+  // ---------- BazzyBox public website ----------
+  // Visitors without a session get the marketing site at "/"; signed-in users fall through to the app.
+  if (ctx.box) {
+    const site = siteHtml({ freeGb: cfg.BOX_FREE_GB, tvUrl: cfg.BAZZY_TV_URL, signupOpen: cfg.BOX_SIGNUP === 'open' });
+    app.get('/', async (c, next) => {
+      if (await ctx.sessions.read(c)) return next();
+      c.header('Content-Security-Policy', SITE_CSP);
+      c.header('Cache-Control', 'no-cache');
+      return c.html(site);
+    });
+    app.get('/site.js', (c) => {
+      c.header('Content-Type', 'text/javascript; charset=utf-8');
+      c.header('Cache-Control', 'public, max-age=3600');
+      return c.body(siteJs);
+    });
+  }
 
   // ---------- static web app ----------
   const dist = resolve(cfg.WEB_DIST);

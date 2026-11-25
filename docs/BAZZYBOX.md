@@ -31,6 +31,22 @@ From the BazzyBox Revenue Model (November 2026 list prices):
 
 Sample assumptions (user mix, signups, churn, elasticity) need testing with real Bazzy TV creators before the price is locked.
 
+## Website: box.bazzy.io
+
+The BazzyBox server is also its public website. On `/`, visitors without a session get the marketing page (`apps/server/src/box/site.ts`): the pitch, a live Dropbox-vs-BazzyBox price calculator, the no-lock-in promise, plans, credit packs and an FAQ. Prices on the page are read from `pricing.ts`, so they always match what the wallet charges. Signed-in users get the file app at the same URL. "Start free" goes to `/signup` (the create-account tab) and "Sign in" to `/login`. Logging out returns to the website.
+
+The Bazzy TV video page (`apps/live`, live.bazzy.io) links to it from its header (`LIVE_BOX_URL`, default `https://box.bazzy.io`), and the website links back (`BAZZY_TV_URL`, default `https://live.bazzy.io`).
+
+**Going live on the subdomain** (same Cloudflare Tunnel as live.bazzy.io):
+
+1. Root `.env`: `BAZZYBOX=true`, `APP_ORIGIN=https://box.bazzy.io`, `NODE_ENV=production`, the e2 and Stripe keys, and `SESSION_SECRET`/`MASTER_KEY`. Add the e2 `box` mount to `mounts.yaml` (see `deploy/mounts.example.yaml`).
+2. Build: `pnpm --filter @stowage/web build && pnpm --filter @stowage/server build`.
+3. Add the `box.bazzy.io` ingress rule to `deploy/cloudflared/native.yml`, using `deploy/cloudflared.example.yml` as the template, and route DNS once: `cloudflared tunnel route dns <tunnel-name> box.bazzy.io`.
+4. Start everything with `sh apps/live/scripts/run-native.sh`. It runs the BazzyBox server when the root `.env` has `BAZZYBOX=true`.
+5. In Stripe, set the webhook to `https://box.bazzy.io/api/box/webhook/stripe`.
+
+Uploads go in 8 MB resumable chunks, under Cloudflare's 100 MB request limit. Large downloads and share links through a free or Pro Cloudflare plan carry the same caveat as live video: fine for a modest audience, but heavy public traffic may need a paid plan or direct presigned e2 links (`DIRECT_TRANSFER=true`).
+
 ## Operating it
 
 - **Backing store:** `BOX_MOUNT` must be an `s3` mount (IDrive e2 in production) or `local` (development). Each user gets a scoped adapter rooted at `u/<id>/`. Keep a second copy of the bucket (for example nightly rclone to Backblaze B2 or a Hetzner Storage Box) for irreplaceable masters.

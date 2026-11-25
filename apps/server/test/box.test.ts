@@ -215,3 +215,29 @@ describe('meter and renewals', () => {
     expect(s.wallet.credits).toBeCloseTo(2501 - 999 * 2, 0);
   });
 });
+
+describe('public website', () => {
+  it('serves the BazzyBox site at / to visitors without a session', async () => {
+    const r = await app.request('/');
+    expect(r.status).toBe(200);
+    const html = await r.text();
+    expect(html).toContain('<title>BazzyBox</title>');
+    expect(html).toContain('$9.99'); // Flex price comes from pricing.ts
+    expect(html).toContain('href="/signup"');
+    expect(html).toContain('https://live.bazzy.io'); // link back to Bazzy TV
+    expect(r.headers.get('content-security-policy')).toContain("script-src 'self'");
+    expect(html).not.toMatch(/<script>(?!<\/script>)/); // no inline script
+  });
+
+  it('serves the calculator script', async () => {
+    const r = await app.request('/site.js');
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toContain('javascript');
+    expect(await r.text()).toContain('Dropbox Plus');
+  });
+
+  it('sends signed-in users past the site to the app', async () => {
+    const r = await alice('/');
+    expect(await r.text()).not.toContain('<title>BazzyBox</title>');
+  });
+});

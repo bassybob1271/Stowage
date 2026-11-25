@@ -78,7 +78,8 @@ function CodeLogin({ onSuccess }: { onSuccess: () => void }) {
 
 /** BazzyBox: email + password, with sign-up. The owner can still use the access code. */
 function BoxLogin({ onSuccess, onOwner }: { onSuccess: () => void; onOwner: () => void }) {
-  const [mode, setMode] = useState<'in' | 'up'>('in');
+  // The public site links to /signup and /login; land on the matching tab.
+  const [mode, setMode] = useState<'in' | 'up'>(() => (window.location.pathname === '/signup' ? 'up' : 'in'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +92,7 @@ function BoxLogin({ onSuccess, onOwner }: { onSuccess: () => void; onOwner: () =
     setError(null);
     try {
       await (mode === 'in' ? api.boxLogin(email, password) : api.boxSignup(email, password));
+      if (window.location.pathname === '/signup' || window.location.pathname === '/login') window.history.replaceState(null, '', '/');
       onSuccess();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');

@@ -43,6 +43,8 @@ const schema = z.object({
   BOX_FREE_GB: z.coerce.number().positive().default(10),
   /** open = anyone can sign up; closed = only existing accounts. */
   BOX_SIGNUP: z.enum(['open', 'closed']).default('open'),
+  /** Bazzy TV video site, linked from the BazzyBox website. Empty hides the link. */
+  BAZZY_TV_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://live.bazzy.io'),
   /** Grant credits without payment (local testing only; refused in production). */
   BOX_DEV_CREDITS: bool.default('false'),
   STRIPE_SECRET_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),

@@ -54,6 +54,11 @@ export function Shell({ account = false }: { account?: boolean }) {
 
   async function logout() {
     await api.logout().catch(() => {});
+    // BazzyBox accounts go back to the public website at "/".
+    if (account) {
+      window.location.assign('/');
+      return;
+    }
     qc.clear();
     // Refetch so the login screen knows which sign-in to show (BazzyBox or access code).
     await qc.fetchQuery({ queryKey: ['session'], queryFn: api.session }).catch(() => qc.setQueryData(['session'], { authenticated: false }));
