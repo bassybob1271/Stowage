@@ -4,7 +4,8 @@ import archiver from 'archiver';
 import Busboy from 'busboy';
 import { basename, joinPath, mimeFor, moveSchema, mkdirSchema, normalizePath, PathError } from '@stowage/shared';
 import { NotFoundError, toNode, toWeb, type EmulatedAdapter } from '@stowage/storage';
-import type { AppContext } from '../app.js';
+import { resolveMount, type AppContext } from '../app.js';
+import { accountIdOf } from '../box/service.js';
 import { indexListing, unindex } from '../db/index.js';
 import { serveFile, isActiveContent, contentDisposition } from '../serve.js';
 import { signToken } from '../crypto.js';
@@ -21,9 +22,19 @@ export function fsRoutes(ctx: AppContext) {
   const app = new Hono();
 
   const mountOf = (c: Context): EmulatedAdapter => {
-    const m = ctx.mounts.get(c.req.param('mount') ?? '');
+    const m = resolveMount(ctx, c.get('user' as never) as string | undefined, c.req.param('mount') ?? '');
     if (!m) throw new HttpError(404, 'unknown mount');
     return m.adapter;
+  };
+  /** BazzyBox account behind this request, if any (quota checks and usage recounts). */
+  const account = (c: Context) => (ctx.box ? accountIdOf(c.get('user' as never) as string | undefined) : null);
+  const touched = (c: Context) => {
+    const id = account(c);
+    if (id) ctx.box!.scheduleUsage(id);
+  };
+  const quota = async (c: Context, bytes: number) => {
+    const id = account(c);
+    if (id) await ctx.box!.checkUpload(id, bytes);
   };
   const q = (c: Context, k = 'path') => normalizePath(c.req.query(k) ?? '');
 
@@ -148,11 +159,15 @@ export function fsRoutes(ctx: AppContext) {
       if (!path) throw new HttpError(400, 'path required');
       const len = Number(c.req.header('content-length') ?? NaN);
       if (max && len > max) throw new HttpError(413, 'file too large');
+      await quota(c, Number.isFinite(len) ? len : 0);
       const st = await a.write(path, body, { size: Number.isFinite(len) ? len : undefined, mime: mimeFor(path) });
       await indexListing(ctx.db, a.id, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '', [st], false);
+      touched(c);
       return c.json({ files: [st] }, 201);
     }
 
+    // Multipart sizes aren't known up front; the whole request length is the upper bound.
+    await quota(c, Number(c.req.header('content-length') ?? 0) || 0);
     const results: unknown[] = [];
     await new Promise<void>((resolve, reject) => {
       const bb = Busboy({ headers: { 'content-type': type }, limits: max ? { fileSize: max } : undefined, preservePath: true });
@@ -184,6 +199,7 @@ export function fsRoutes(ctx: AppContext) {
       bb.on('error', reject);
       Readable.fromWeb(body as import('node:stream/web').ReadableStream).pipe(bb);
     });
+    touched(c);
     return c.json({ files: results }, 201);
   });
 
@@ -191,6 +207,7 @@ export function fsRoutes(ctx: AppContext) {
     const a = mountOf(c);
     const { path } = mkdirSchema.parse(await c.req.json());
     await a.mkdir(path);
+    touched(c);
     return c.json({ ok: true }, 201);
   });
 
@@ -209,6 +226,7 @@ export function fsRoutes(ctx: AppContext) {
     if (!path) throw new PathError('refusing to delete mount root');
     await a.delete(path);
     await unindex(ctx.db, a.id, path);
+    touched(c);
     return c.json({ ok: true });
   });
 

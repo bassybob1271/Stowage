@@ -64,6 +64,28 @@ The compose file publishes the app on `127.0.0.1` only. Set `APP_BIND=0.0.0.0` (
 
 `deploy/cloudflared/` holds secrets (the account cert and tunnel credentials). It is gitignored; keep it `chmod 700`. If you created the tunnel in the Cloudflare dashboard instead, its token is base64 JSON `{a, t, s}`, which maps to a credentials file `{AccountTag, TunnelID, TunnelSecret}`. For a second login layer in front of the gate, add a Cloudflare Access application for the hostname: Zero Trust → Access → Applications → Self-hosted, with an **Allow** policy listing approved emails and the One-time PIN login method. Unauthenticated requests are then redirected to Cloudflare's sign-in before they reach Stowage.
 
+## BazzyBox mode (accounts, plans, credits on IDrive e2)
+
+Set `BAZZYBOX=true` to turn Stowage into **BazzyBox**, the storage service inside Bazzy TV for filmmakers and musicians:
+
+- Email/password accounts (argon2id), sign-up on the login screen. The access code still works for the owner (admin).
+- One backing mount, `BOX_MOUNT` (IDrive e2), with each user in a private `u/<id>/` folder. Users never see other mounts or each other's files.
+- **Free** (10 GB) and **Flex** ($9.99 per 30 days, 3 TB). Past 3 TB, $9.50 per TB-month, metered daily.
+- A **credits wallet** (1 credit = $0.01), topped up through Stripe Checkout. Plan fees, extra storage and share-link downloads past the monthly allowance are paid from it.
+- **No lock-in:** switch plans any day; unused days return to the wallet at once. If the wallet runs out, uploads pause and nothing is deleted.
+- **Share links** (`/s/<token>`) anyone can download. 50 GB/month free on Flex, then $0.04/GB.
+
+```yaml
+# mounts.yaml
+mounts:
+  - id: box
+    label: IDrive e2
+    kind: s3
+    config: { endpoint: ${E2_ENDPOINT}, region: us-east-1, bucket: ${E2_BUCKET}, accessKey: ${E2_ACCESS_KEY}, secretKey: ${E2_SECRET_KEY}, forcePathStyle: true }
+```
+
+Then set `BAZZYBOX=true`, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, and add a Stripe webhook for `checkout.session.completed` pointing at `https://<host>/api/box/webhook/stripe`. For local testing without Stripe, use `BOX_DEV_CREDITS=true`. Pricing, the revenue model and operating notes are in [`docs/BAZZYBOX.md`](docs/BAZZYBOX.md).
+
 ## Development
 
 Requires Node 22 and pnpm (`corepack enable`), plus Docker for the storage backends.

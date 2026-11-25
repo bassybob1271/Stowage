@@ -6,7 +6,8 @@ import { FileStore } from '@tus/file-store';
 import { eq } from 'drizzle-orm';
 import { joinPath, mimeFor, normalizePath } from '@stowage/shared';
 import { toWeb } from '@stowage/storage';
-import type { AppContext } from './app.js';
+import { SUB_HEADER, resolveMount, type AppContext } from './app.js';
+import { BoxError, accountIdOf } from './box/service.js';
 import { indexListing } from './db/index.js';
 import { log } from './log.js';
 
@@ -34,12 +35,22 @@ export function createTus(ctx: AppContext) {
     maxSize: ctx.cfg.MAX_UPLOAD_BYTES || undefined,
     respectForwardedHeaders: ctx.cfg.TRUST_PROXY,
     relativeLocation: true,
-    async onUploadCreate(_req, upload) {
+    async onUploadCreate(req, upload) {
       const { mount, path } = target(upload.metadata);
-      const m = ctx.mounts.get(mount);
+      const sub = req.headers.get(SUB_HEADER) ?? undefined;
+      const m = resolveMount(ctx, sub, mount);
       if (!m) throw { status_code: 404, body: 'unknown mount\n' };
       if (m.def.readOnly) throw { status_code: 403, body: 'mount is read-only\n' };
       if (!path) throw { status_code: 400, body: 'filename required\n' };
+      const acct = ctx.box ? accountIdOf(sub) : null;
+      if (acct) {
+        try {
+          await ctx.box!.checkUpload(acct, upload.size ?? 0);
+        } catch (e) {
+          if (e instanceof BoxError) throw { status_code: e.status, body: `${e.message}\n` };
+          throw e;
+        }
+      }
       await ctx.db.orm.insert(uploads).values({
         id: upload.id,
         mountId: mount,
@@ -52,15 +63,19 @@ export function createTus(ctx: AppContext) {
       });
       return { metadata: upload.metadata };
     },
-    async onUploadFinish(_req, upload) {
+    async onUploadFinish(req, upload) {
       const { mount, path } = target(upload.metadata);
-      const m = ctx.mounts.get(mount)!;
+      const sub = req.headers.get(SUB_HEADER) ?? undefined;
+      const m = resolveMount(ctx, sub, mount);
+      if (!m) throw { status_code: 404, body: 'unknown mount\n' };
+      const acct = ctx.box ? accountIdOf(sub) : null;
       const file = join(directory, upload.id);
       try {
         await ctx.db.orm.update(uploads).set({ status: 'storing', offset: upload.offset, updatedAt: now() }).where(eq(uploads.id, upload.id));
         const st = await m.adapter.write(path, toWeb(createReadStream(file)), { size: upload.size, mime: mimeFor(path) });
         await indexListing(ctx.db, mount, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '', [st], false);
         await ctx.db.orm.update(uploads).set({ status: 'done', updatedAt: now() }).where(eq(uploads.id, upload.id));
+        if (acct) ctx.box!.scheduleUsage(acct);
         await rm(file, { force: true });
         await rm(file + '.json', { force: true });
         return { status_code: 204, headers: { 'Stowage-Path': encodeURIComponent(path) } };

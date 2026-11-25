@@ -24,6 +24,42 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const enc = (p: string) => encodeURIComponent(p);
 
+export interface Session {
+  authenticated: boolean;
+  /** 'box' when BazzyBox accounts are on; 'code' for the access-code gate. */
+  provider?: 'box' | 'code';
+  account?: boolean;
+  admin?: boolean;
+}
+
+export interface BoxPlan {
+  id: 'free' | 'flex';
+  label: string;
+  priceCredits: number;
+  includedBytes: number;
+  overageCreditsPerTbMonth: number | null;
+  sendFreeBytes: number;
+}
+
+export interface BoxSummary {
+  account: { id: string; email: string; createdAt: string };
+  plan: { id: 'free' | 'flex'; label: string; priceCredits: number; includedBytes: number; periodEnd: number | null; overageCreditsPerTbMonth: number | null };
+  usage: { usedBytes: number; allowedBytes: number; measuredAt: number | null; sendBytes: number; sendFreeBytes: number };
+  wallet: { credits: number; dailyChargeCredits: number };
+  plans: BoxPlan[];
+  packs: Record<string, { usdCents: number; credits: number }>;
+  payments: 'stripe' | 'dev' | 'none';
+  history: { at: string; credits: number; kind: string; note: string }[];
+}
+
+export interface BoxShare {
+  token: string;
+  path: string;
+  expiresAt: string | null;
+  downloads: number;
+  url: string;
+}
+
 /** URL for streaming a file (path-style, so relative references like HLS segments resolve). */
 export function fileUrl(mount: string, path: string) {
   return `/api/fs/${enc(mount)}/file/${path.split('/').map(enc).join('/')}`;
@@ -36,7 +72,18 @@ export const zipUrl = (mount: string, paths: string[]) =>
   `/api/fs/${enc(mount)}/zip?${paths.map((p) => `paths[]=${enc(p)}`).join('&')}`;
 
 export const api = {
-  session: () => call<{ authenticated: boolean }>('/api/auth/session'),
+  session: () => call<Session>('/api/auth/session'),
+  boxSignup: (email: string, password: string) => call<{ ok: true }>('/api/auth/box/signup', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  boxLogin: (email: string, password: string) => call<{ ok: true }>('/api/auth/box/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  box: {
+    me: () => call<BoxSummary>('/api/box/me'),
+    refreshUsage: () => call<BoxSummary>('/api/box/usage/refresh', { method: 'POST' }),
+    setPlan: (plan: 'free' | 'flex') => call<BoxSummary>('/api/box/plan', { method: 'POST', body: JSON.stringify({ plan }) }),
+    buy: (pack: string) => call<BoxSummary | { checkoutUrl: string }>('/api/box/credits', { method: 'POST', body: JSON.stringify({ pack }) }),
+    shares: () => call<{ shares: BoxShare[] }>('/api/box/shares'),
+    share: (path: string, days = 7) => call<{ url: string; expiresAt: string }>('/api/box/shares', { method: 'POST', body: JSON.stringify({ path, days }) }),
+    unshare: (token: string) => call(`/api/box/shares/${enc(token)}`, { method: 'DELETE' }),
+  },
   login: (code: string) => call<{ ok: true }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ code }) }),
   logout: () => call('/api/auth/logout', { method: 'POST' }),
   mounts: (fresh = false) => call<{ mounts: MountInfo[]; directTransfer: boolean }>(`/api/mounts${fresh ? '?fresh=1' : ''}`),

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Menu, Search, Settings as SettingsIcon, Upload, X, Star, Clock, HardDrive, FolderUp } from 'lucide-react';
+import { LogOut, Menu, Search, Settings as SettingsIcon, Upload, X, Star, Clock, HardDrive, FolderUp, Wallet } from 'lucide-react';
 import type { MountInfo } from '@stowage/shared';
 import { api } from '../api';
 import { href, navigate, useLocation } from '../lib/router';
@@ -12,14 +12,17 @@ import { UploadTray } from './UploadTray';
 import { MiniPlayer } from './MiniPlayer';
 import { DialogHost } from './Dialogs';
 import { Settings } from './Settings';
+import { Billing } from './Billing';
 
-export function Shell() {
+/** `account` = signed in with a BazzyBox account (one private mount, plan & credits instead of mount settings). */
+export function Shell({ account = false }: { account?: boolean }) {
   const loc = useLocation();
   const qc = useQueryClient();
   const mounts = useQuery({ queryKey: ['mounts'], queryFn: () => api.mounts(), refetchInterval: 60_000 });
   const [filter, setFilter] = useState('');
   const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [billing, setBilling] = useState(() => account && new URLSearchParams(location.search).has('credits'));
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
 
@@ -52,7 +55,8 @@ export function Shell() {
   async function logout() {
     await api.logout().catch(() => {});
     qc.clear();
-    qc.setQueryData(['session'], { authenticated: false });
+    // Refetch so the login screen knows which sign-in to show (BazzyBox or access code).
+    await qc.fetchQuery({ queryKey: ['session'], queryFn: api.session }).catch(() => qc.setQueryData(['session'], { authenticated: false }));
     history.replaceState(null, '', '/');
   }
 
@@ -66,7 +70,7 @@ export function Shell() {
         </button>
         <a href="/" onClick={(e) => (e.preventDefault(), list[0] && navigate(href(list[0].id)))} className="flex items-center gap-2 font-semibold tracking-tight mr-2">
           <img src="/favicon.svg" alt="" className="w-6 h-6" />
-          <span className="hidden sm:inline">Stowage</span>
+          <span className="hidden sm:inline">{account ? 'BazzyBox' : 'Stowage'}</span>
         </a>
         <div className="flex-1 max-w-xl relative">
           <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
@@ -87,9 +91,15 @@ export function Shell() {
           <button className="btn btn-icon hidden sm:inline-flex" disabled={!writable} onClick={() => folderInput.current?.click()} title="Upload folder" aria-label="Upload folder">
             <FolderUp size={18} />
           </button>
-          <button className="btn btn-icon" onClick={() => setSettings(true)} title="Mounts & settings" aria-label="Settings">
-            <SettingsIcon size={18} />
-          </button>
+          {account ? (
+            <button className="btn btn-icon" onClick={() => setBilling(true)} title="Plan & credits" aria-label="Plan and credits">
+              <Wallet size={18} />
+            </button>
+          ) : (
+            <button className="btn btn-icon" onClick={() => setSettings(true)} title="Mounts & settings" aria-label="Settings">
+              <SettingsIcon size={18} />
+            </button>
+          )}
           <button className="btn btn-icon" onClick={logout} title="Log out" aria-label="Log out">
             <LogOut size={18} />
           </button>
@@ -127,6 +137,14 @@ export function Shell() {
       <UploadTray />
       <DialogHost />
       {settings && <Settings mounts={list} onClose={() => setSettings(false)} />}
+      {billing && (
+        <Billing
+          onClose={() => {
+            setBilling(false);
+            if (location.search) history.replaceState(null, '', location.pathname);
+          }}
+        />
+      )}
     </div>
   );
 }

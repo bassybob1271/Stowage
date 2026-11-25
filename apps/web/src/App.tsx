@@ -11,7 +11,7 @@ export function App() {
   const [restored, setRestored] = useState(false);
 
   useEffect(() => {
-    const onUnauthorized = () => qc.setQueryData(['session'], { authenticated: false });
+    const onUnauthorized = () => qc.setQueryData(['session'], (s: object | undefined) => ({ ...s, authenticated: false }));
     authEvents.addEventListener('unauthorized', onUnauthorized);
     return () => authEvents.removeEventListener('unauthorized', onUnauthorized);
   }, [qc]);
@@ -25,6 +25,6 @@ export function App() {
   }, [authed, restored]);
 
   if (session.isPending) return <div className="h-full grid place-items-center text-muted text-sm">Loading…</div>;
-  if (!authed) return <Login onSuccess={() => qc.setQueryData(['session'], { authenticated: true })} />;
-  return <Shell />;
+  if (!authed) return <Login provider={session.data?.provider} onSuccess={() => void qc.invalidateQueries({ queryKey: ['session'] })} />;
+  return <Shell account={session.data?.account === true} />;
 }

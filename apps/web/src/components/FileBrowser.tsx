@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowDown, ArrowUp, ChevronRight, Download, FolderPlus, LayoutGrid, List, Trash2, MoveRight, Pencil, Link2, Hash, Star,
-  ExternalLink, RefreshCw,
-} from 'lucide-react';
+  ExternalLink, RefreshCw, Share2 } from 'lucide-react';
 import type { FileStat, MountInfo } from '@stowage/shared';
 import { api, downloadUrl, thumbUrl, zipUrl, ApiError } from '../api';
 import { href, navigate } from '../lib/router';
@@ -169,6 +168,19 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
     async copyLink(e: FileStat) {
       const u = e.isDir ? location.origin + href(mount.id, e.path) : location.origin + href(mount.id, path, e.name);
       await navigator.clipboard.writeText(u).then(() => toast('Link copied'), () => toast(u));
+    },
+    /** BazzyBox: a public link anyone can download, metered against the owner's send allowance. */
+    async shareLink(e: FileStat) {
+      try {
+        const { url, expiresAt } = await api.box.share(e.path, 7);
+        const full = location.origin + url;
+        await navigator.clipboard.writeText(full).then(
+          () => toast(`Share link copied. It works until ${new Date(expiresAt).toLocaleDateString()}.`),
+          () => toast(full),
+        );
+      } catch (err) {
+        toast((err as Error).message, 'error');
+      }
     },
     async openNewTab(e: FileStat) {
       const { url } = await api.link(mount.id, e.path);
@@ -456,6 +468,9 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
           {menuTarget && <button disabled={mount.readOnly} onClick={() => void act.rename(menuTarget)}><Pencil size={15} /> Rename <span className="ml-auto text-xs text-muted">F2</span></button>}
           {sel.length > 0 && <button disabled={mount.readOnly} onClick={() => void act.move(sel)}><MoveRight size={15} /> Move…</button>}
           {menuTarget && <button onClick={() => void act.copyLink(menuTarget)}><Link2 size={15} /> Copy link</button>}
+          {menuTarget && !menuTarget.isDir && /^box-[0-9a-f]{16}$/.test(mount.id) && (
+            <button onClick={() => void act.shareLink(menuTarget)}><Share2 size={15} /> Create share link</button>
+          )}
           {menuTarget?.cid && <button onClick={() => void act.showCid(menuTarget)}><Hash size={15} /> Show CID</button>}
           {menuTarget && (
             <button onClick={() => toggleStar({ mount: mount.id, path: menuTarget.path, name: menuTarget.name, isDir: menuTarget.isDir })}>
