@@ -38,7 +38,7 @@ const schema = z.object({
   // ---------- BazzyBox (multi-user, plans, credits) ----------
   /** Turn on email/password accounts, per-user storage, plans and the credits wallet. */
   BAZZYBOX: bool.default('false'),
-  /** Mount (from mounts.yaml) that holds every user's files, each under u/<id>/. Point it at IDrive e2. */
+  /** Mount (from mounts.yaml) that holds every user's files, each under u/<id>/. Point it at Backblaze B2. */
   BOX_MOUNT: z.string().default('box'),
   BOX_FREE_GB: z.coerce.number().positive().default(10),
   /** open = anyone can sign up; closed = only existing accounts. */

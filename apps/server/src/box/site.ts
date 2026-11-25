@@ -243,7 +243,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 <div class="wrap two">
   <div>
     <h2>Built for big media files</h2>
-    <p class="mute">Sessions, stems, RAW footage and masters, kept in one private space and stored on IDrive e2's hot object storage.</p>
+    <p class="mute">Sessions, stems, RAW footage and masters, kept in one private space on Backblaze B2's always-hot cloud storage.</p>
     <ul>
       <li><b>Resumable uploads.</b> Multi-gigabyte files survive a dropped connection or a closed laptop.</li>
       <li><b>Play before you download.</b> Scrub video, audition mixes on a waveform player, page through PDFs.</li>
@@ -275,7 +275,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
   <details><summary>What if I'm over the free space when I downgrade?</summary><p>Nothing is deleted. Uploads pause until you're back under the free space or back on Flex. You can still open, play and download everything.</p></details>
   <details><summary>How do credits work?</summary><p>Buy a pack by card and the credits land in your wallet. Flex renews from the wallet every 30 days, and extra storage and paid sends come out of it too. Bigger packs include bonus credits.</p></details>
   <details><summary>Can I get my money back?</summary><p>Unused purchased credits are refundable when you close your account. Contact support and we'll process it.</p></details>
-  <details><summary>Where are my files stored?</summary><p>On IDrive e2, an S3-compatible hot storage service with data centers in North America and Europe. Your files sit in a private space only your account can open.</p></details>
+  <details><summary>Where are my files stored?</summary><p>On Backblaze B2, always-hot cloud storage with data centers in North America and Europe. Your files sit in a private space only your account can open.</p></details>
   <details><summary>Is BazzyBox part of Bazzy TV?</summary><p>Yes. It's the storage side of Bazzy TV, made for the same filmmakers and musicians who stream and publish there.</p></details>
 </div>
 </section>

@@ -1,6 +1,6 @@
 # BazzyBox
 
-BazzyBox is Stowage running with `BAZZYBOX=true`: a cheaper, no-lock-in alternative to Dropbox for filmmakers and musicians, sold inside Bazzy TV and stored on IDrive e2.
+BazzyBox is Stowage running with `BAZZYBOX=true`: a cheaper, no-lock-in alternative to Dropbox for filmmakers and musicians, sold inside Bazzy TV and stored on Backblaze B2, the storage planned for all three Bazzy companies (each in its own bucket).
 
 ## Pricing
 
@@ -11,7 +11,7 @@ BazzyBox is Stowage running with `BAZZYBOX=true`: a cheaper, no-lock-in alternat
 | Past the included space | Uploads stop | **$9.50 per TB-month**, charged daily | **$6 per TB-month**, charged daily |
 | Share-link downloads | 2 GB/month | 50 GB/month, then **$0.04/GB** | 250 GB/month, then **$0.04/GB** |
 
-**Studio** keeps heavy users below Dropbox up to 20 TB. Flex's $9.50/TB overtakes Dropbox Advanced ($90 for 15 TB on 3 seats, $120 for 20 TB on 4) at 12 TB, and Studio is the cheaper BazzyBox plan from 11 TB. Its margin is thin on pay-as-you-go e2 ($6/TB): a customer who fills all 15 TB costs about $99/month to host at $6/TB with 10% overhead. Put e2 on a yearly ($4.96/TB) or 3-year ($4.13/TB) plan before selling Studio widely. Switching between paid plans credits the unused days of the old plan first, and a switch the wallet can't cover changes nothing.
+**Studio** keeps heavy users below Dropbox up to 20 TB. Flex's $9.50/TB overtakes Dropbox Advanced ($90 for 15 TB on 3 seats, $120 for 20 TB on 4) at 12 TB, and Studio is the cheaper BazzyBox plan from 11 TB. **On B2, Studio loses money on full accounts.** At $6.95/TB with 10% overhead for versions and trash, a full 15 TB costs about $115/month to host against $79.99, and each extra TB at $6 is sold under B2's own $6.95. Studio breaks even when its customers average about 10 TB stored. Before selling it widely, either raise the extra-TB price to at least $9, or keep Studio users' files on cheaper storage. Switching between paid plans credits the unused days of the old plan first, and a switch the wallet can't cover changes nothing.
 
 **Credits wallet.** 1 credit = $0.01. Packs: $10 → 1,000 · $25 → 2,600 (+4%) · $50 → 5,300 (+6%) · $100 → 11,000 (+10%). Credits don't expire. Plan fees, extra storage and paid sends come out of the wallet.
 
@@ -19,16 +19,16 @@ BazzyBox is Stowage running with `BAZZYBOX=true`: a cheaper, no-lock-in alternat
 - Plans change immediately, any day. Moving to Free returns the unused part of the 30 days to the wallet (`proratedRefundMc`).
 - Flex renews from the wallet. If the wallet can't pay, the account moves to Free; **files are never deleted**, uploads just pause while over the free space.
 - Extra storage is billed by the day, so deleting a finished project lowers the bill the next day.
-- Exports are free. IDrive e2 doesn't charge egress up to 3× stored data, and Stowage has no download fees for owners.
+- Exports are free. B2 doesn't charge for downloads up to 3× stored data, and Stowage has no download fees for owners.
 
 ### Why these numbers
 
 From the BazzyBox Revenue Model (November 2026 list prices):
 
 - Dropbox charges $11.99/month for 2 TB (Plus) and $19.99–22 for 3 TB (Professional). Plan changes take effect at the end of the billing cycle, with a general no-refund policy.
-- IDrive e2 costs $6/TB-month pay-as-you-go ($4.96 on a yearly plan, $4.13 on three years), with free API calls and free egress up to 3× storage.
+- Backblaze B2 costs $6.95/TB-month pay-as-you-go, with free uploads, free class A/B/C API calls, egress free up to 3× storage (then $0.01/GB) and free egress to CDN partners (Bunny, Fastly, Cloudflare). The prices below were first worked out on IDrive e2 ($6/TB); B2 costs about $1/TB more, in exchange for one vendor across all three Bazzy companies.
 - A grid search over base price, included space and per-TB rate maximized 36-month gross profit under two rules: every customer type pays at least 15% less than the matching Dropbox plan, and extra storage sells for at least 30% over cost. With medium price sensitivity, the result was $9.99 for 3 TB plus $9.50/TB.
-- Heavy users are thin-margin on pay-as-you-go e2: someone storing about 1.8 TB costs about $11/month to host. Margin comes from light users, paid sends and committing to a yearly e2 plan once volume is predictable.
+- Heavy users are thin-margin: on B2, someone storing about 1.8 TB costs about $13.80/month to host against Flex's $9.99. Margin comes from light users and paid sends. Flex's extra storage at $9.50/TB keeps about 20% over B2's cost.
 - Credits cut card fees. Stripe takes 2.9% + 30¢ per charge, so one $25 top-up loses 4.1%, while a $9.99 monthly card charge would lose 5.9%.
 
 Sample assumptions (user mix, signups, churn, elasticity) need testing with real Bazzy TV creators before the price is locked.
@@ -41,13 +41,13 @@ The Bazzy TV video page (`apps/live`, live.bazzy.io) links to it from its header
 
 **Going live on the subdomain** (same Cloudflare Tunnel as live.bazzy.io):
 
-1. Root `.env`: `BAZZYBOX=true`, `APP_ORIGIN=https://box.bazzy.io`, `NODE_ENV=production`, the e2 and Stripe keys, and `SESSION_SECRET`/`MASTER_KEY`. Add the e2 `box` mount to `mounts.yaml` (see `deploy/mounts.example.yaml`).
+1. Root `.env`: `BAZZYBOX=true`, `APP_ORIGIN=https://box.bazzy.io`, `NODE_ENV=production`, the B2 (`BOX_B2_*`) and Stripe keys, and `SESSION_SECRET`/`MASTER_KEY`. Add the B2 `box` mount to `mounts.yaml` (see `deploy/mounts.example.yaml`).
 2. Build: `pnpm --filter @stowage/web build && pnpm --filter @stowage/server build`.
 3. Add the `box.bazzy.io` ingress rule to `deploy/cloudflared/native.yml`, using `deploy/cloudflared.example.yml` as the template, and route DNS once: `cloudflared tunnel route dns <tunnel-name> box.bazzy.io`.
 4. Start everything with `sh apps/live/scripts/run-native.sh`. It runs the BazzyBox server when the root `.env` has `BAZZYBOX=true`.
 5. In Stripe, set the webhook to `https://box.bazzy.io/api/box/webhook/stripe`.
 
-Uploads go in 8 MB resumable chunks, under Cloudflare's 100 MB request limit. Large downloads and share links through a free or Pro Cloudflare plan carry the same caveat as live video: fine for a modest audience, but heavy public traffic may need a paid plan or direct presigned e2 links (`DIRECT_TRANSFER=true`).
+Uploads go in 8 MB resumable chunks, under Cloudflare's 100 MB request limit. Large downloads and share links through a free or Pro Cloudflare plan carry the same caveat as live video: fine for a modest audience, but heavy public traffic may need a paid plan or direct presigned B2 links (`DIRECT_TRANSFER=true`).
 
 ## Sign in with Bazzy TV
 
@@ -70,10 +70,11 @@ The button appears on the BazzyBox sign-in page once these are set. Failed sign-
 
 ## Operating it
 
-- **Backing store:** `BOX_MOUNT` must be an `s3` mount (IDrive e2 in production) or `local` (development). Each user gets a scoped adapter rooted at `u/<id>/`. Keep a second copy of the bucket (for example nightly rclone to Backblaze B2 or a Hetzner Storage Box) for irreplaceable masters.
+- **Backing store:** `BOX_MOUNT` must be an `s3` mount (Backblaze B2 in production) or `local` (development). Each user gets a scoped adapter rooted at `u/<id>/`. Use a private bucket of its own and an application key limited to it.
+- **Backup:** keep a second copy off Backblaze, since all three Bazzy companies are meant to store there. A nightly `rclone sync` to IDrive e2 or a Hetzner Storage Box (about €2/TB) is enough, and B2-to-anywhere copies are free within the 3× egress allowance.
 - **Payments:** `STRIPE_SECRET_KEY` enables Checkout for credit packs. The webhook (`/api/box/webhook/stripe`, event `checkout.session.completed`) is signature-verified with `STRIPE_WEBHOOK_SECRET`. Each Checkout session id is stored as a unique ledger reference, so repeated webhooks credit once.
 - **Meter:** every `BOX_METER_INTERVAL_SEC` (default hourly) each account is checked. Whole days since the last charge are billed for storage past the included space, Flex renewals are taken, and the 30-day send allowance resets.
-- **Usage:** recounted by walking the user's folder a moment after uploads and deletes. e2 charges nothing for listing calls.
+- **Usage:** recounted by walking the user's folder a moment after uploads and deletes. B2 charges nothing for listing calls.
 - **Refunds:** the policy promises refunds of unused purchased credits on account closure. That is processed manually in Stripe today; an account-closure endpoint is a follow-up.
 - **Legal:** prepaid credits may count as customer liabilities and can fall under state gift-card or refund rules. Check with an accountant.
 

@@ -7,7 +7,8 @@
  * daily, sends free up to a monthly allowance then 4 credits per GB.
  * Studio is $79.99/30 days for 15 TB, then $6 per TB-month: it stays under Dropbox
  * Advanced ($90 for 15 TB on 3 seats, $120 for 20 TB on 4) all the way to 20 TB.
- * Thin margin on pay-as-you-go e2 ($6/TB); put e2 on a yearly plan before selling it widely.
+ * Storage runs on Backblaze B2 ($6.95/TB-month pay-as-you-go). Studio is below cost when full
+ * (15 TB ≈ $115/month to host) and its $6/TB extra is under B2's price; see docs/BAZZYBOX.md.
  */
 
 export const MC_PER_CREDIT = 1000;

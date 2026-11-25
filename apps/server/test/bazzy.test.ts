@@ -10,7 +10,7 @@ import { createApp, createContext } from '../src/app.js';
 import { bazzyHttp } from '../src/box/bazzy.js';
 
 const dir = mkdtempSync(join(tmpdir(), 'bazzy-signin-'));
-writeFileSync(join(dir, 'mounts.yaml'), `mounts:\n  - id: box\n    label: e2\n    kind: local\n    config: { root: "${join(dir, 'files')}" }\n`);
+writeFileSync(join(dir, 'mounts.yaml'), `mounts:\n  - id: box\n    label: b2\n    kind: local\n    config: { root: "${join(dir, 'files')}" }\n`);
 
 const cfg = loadConfig({
   NODE_ENV: 'test',

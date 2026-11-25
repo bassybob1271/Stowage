@@ -17,12 +17,13 @@ mounts:
     kind: s3
     config: { endpoint: ${B2_ENDPOINT}, region: us-west-004, bucket: ${B2_BUCKET}, accessKey: ${B2_KEY_ID}, secretKey: ${B2_APP_KEY} }
 
-  # IDrive e2 — the BazzyBox backing store (BOX_MOUNT=box). Every user's files live under u/<id>/.
-  # Use the endpoint your e2 dashboard shows for the bucket's region (it can be account-specific).
+  # Backblaze B2 — the BazzyBox backing store (BOX_MOUNT=box). Every user's files live under u/<id>/.
+  # Endpoint and region come from the bucket's page in the B2 console (e.g. s3.us-east-005.backblazeb2.com → us-east-005).
+  # Use an application key restricted to this one bucket.
   - id: box
-    label: IDrive e2
+    label: Backblaze B2
     kind: s3
-    config: { endpoint: ${E2_ENDPOINT}, region: us-east-1, bucket: ${E2_BUCKET}, accessKey: ${E2_ACCESS_KEY}, secretKey: ${E2_SECRET_KEY}, forcePathStyle: true }
+    config: { endpoint: ${BOX_B2_ENDPOINT}, region: ${BOX_B2_REGION}, bucket: ${BOX_B2_BUCKET}, accessKey: ${BOX_B2_KEY_ID}, secretKey: ${BOX_B2_APP_KEY} }
 
   # Wasabi: https://s3.<region>.wasabisys.com · DO Spaces: https://<region>.digitaloceanspaces.com
   # OCI: https://<namespace>.compat.objectstorage.<region>.oraclecloud.com (forcePathStyle: true)

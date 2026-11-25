@@ -42,7 +42,7 @@ export const accountIdOfMount = (mountId: string) => (/^box-[0-9a-f]{16}$/.test(
 
 /**
  * Accounts, per-user storage, the credits wallet and the storage meter.
- * Every user's files live in one backing mount (BOX_MOUNT, e.g. IDrive e2) under u/<id>/.
+ * Every user's files live in one backing mount (BOX_MOUNT, e.g. Backblaze B2) under u/<id>/.
  */
 export class BoxService {
   readonly plans: Record<PlanId, Plan>;
@@ -62,7 +62,7 @@ export class BoxService {
   /** Fail fast at boot if the backing mount is missing or of a kind we can't scope per user. */
   validate() {
     const m = this.base;
-    if (!['s3', 'local'].includes(m.def.kind)) throw new Error(`BOX_MOUNT must be an s3 (IDrive e2) or local mount, got ${m.def.kind}`);
+    if (!['s3', 'local'].includes(m.def.kind)) throw new Error(`BOX_MOUNT must be an s3 (Backblaze B2) or local mount, got ${m.def.kind}`);
     if (m.def.readOnly) throw new Error('BOX_MOUNT must be writable');
   }
 
@@ -173,7 +173,7 @@ export class BoxService {
     return { ...info, health: { ok: this.base.health.ok, detail: this.base.health.detail } };
   }
 
-  /** Recount stored bytes by walking the user's folder (e2 charges nothing for API calls). */
+  /** Recount stored bytes by walking the user's folder (B2 charges nothing for these API calls). */
   async refreshUsage(id: string): Promise<number> {
     let total = 0;
     for await (const e of this.mountFor(id).adapter.walk('')) if (!e.isDir) total += e.size;

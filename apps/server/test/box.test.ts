@@ -11,7 +11,7 @@ import { signWebhook, verifyWebhook } from '../src/box/stripe.js';
 import { DAY_MS, GB, TB, allowedBytes, dailyOverageMc, plans, proratedRefundMc, sendChargeMc } from '../src/box/pricing.js';
 
 const dir = mkdtempSync(join(tmpdir(), 'bazzybox-'));
-writeFileSync(join(dir, 'mounts.yaml'), `mounts:\n  - id: box\n    label: e2\n    kind: local\n    config: { root: "${join(dir, 'files')}" }\n`);
+writeFileSync(join(dir, 'mounts.yaml'), `mounts:\n  - id: box\n    label: b2\n    kind: local\n    config: { root: "${join(dir, 'files')}" }\n`);
 
 const env = {
   NODE_ENV: 'test',
