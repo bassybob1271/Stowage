@@ -33,6 +33,11 @@ export interface SiteOptions {
 export function siteHtml(o: SiteOptions): string {
   const p = plans(o.freeGb);
   const flex = p.flex;
+  const studio = p.studio;
+  const studioTb = studio.includedBytes / 1e12;
+  const studioPrice = usd(studio.priceCredits);
+  const studioOver = usd(studio.overageCreditsPerTbMonth ?? 0);
+  const studioSendGb = studio.sendFreeBytes / 1e9;
   const flexTb = flex.includedBytes / 1e12;
   const flexPrice = usd(flex.priceCredits);
   const overTb = usd(flex.overageCreditsPerTbMonth ?? 0);
@@ -55,7 +60,7 @@ export function siteHtml(o: SiteOptions): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>BazzyBox</title>
-<meta name="description" content="Cloud storage for filmmakers and musicians, from Bazzy TV. ${flexTb} TB for ${flexPrice}. Downgrade any day, keep your files.">
+<meta name="description" content="Cloud storage for filmmakers and musicians, from Bazzy TV. ${flexTb} TB for ${flexPrice}, ${studioTb} TB for ${studioPrice}. Downgrade any day, keep your files.">
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&display=swap" rel="stylesheet">
@@ -113,7 +118,7 @@ input[type=range]{width:100%;height:44px;accent-color:var(--red);margin:4px 0 14
 .card p{font-size:15px;color:var(--mute);margin:0}
 .k{display:block;font-stretch:112%;font-weight:800;font-size:30px;color:var(--red);margin-bottom:6px}
 .alt{background:#08090b}
-.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin-top:20px}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px;margin-top:20px}
 .tier{border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--panel)}
 .tier.main{border-color:var(--red)}
 .price{font-stretch:112%;font-weight:800;font-size:44px;line-height:1;margin:10px 0 4px;white-space:nowrap}
@@ -166,14 +171,14 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
     </div>
     <p class="small">From Bazzy TV. No card needed for the free plan.</p>
   </div>
-  <div class="calc" id="calc" data-flex="${flex.priceCredits}" data-incl="${flexTb}" data-over="${flex.overageCreditsPerTbMonth ?? 0}">
+  <div class="calc" id="calc" data-flex="${flex.priceCredits}" data-incl="${flexTb}" data-over="${flex.overageCreditsPerTbMonth ?? 0}" data-studio="${studio.priceCredits}" data-sincl="${studioTb}" data-sover="${studio.overageCreditsPerTbMonth ?? 0}">
     <label for="tb">How much do you keep in the cloud? <b id="tbv">2 TB</b></label>
-    <input id="tb" type="range" min="0.5" max="20" step="0.5" value="2" aria-describedby="plan">
+    <input id="tb" type="range" min="2" max="20" step="1" value="2" aria-describedby="plan" aria-valuetext="2 TB">
     <div class="bill"><span>Dropbox</span><div class="trk"><div class="fill" id="fd" style="width:100%"></div></div><b id="vd">$11.99</b></div>
     <div class="bill us"><span>BazzyBox</span><div class="trk"><div class="fill" id="fb" style="width:83%"></div></div><b id="vb">${flexPrice}</b></div>
     <div class="save"><span class="mute">You save each year</span><b id="sv">$24</b></div>
     <p class="plan" id="plan">Dropbox Plus, 2 TB · BazzyBox Flex, ${flexTb} TB included</p>
-    <p class="plan">Dropbox monthly list prices, November 2026. Team plans need 3 seats.</p>
+    <p class="plan">Dropbox monthly list prices, November 2026. Team plans need 3 seats; Advanced adds 5 TB per seat.</p>
   </div>
 </div>
 </header>
@@ -193,7 +198,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 
 <section class="band" id="pricing">
 <div class="wrap">
-  <h2>Two plans and a wallet</h2>
+  <h2>Three plans and a wallet</h2>
   <p class="mute">Everything is paid in credits. 1 credit is one cent, and credits never expire.</p>
   <div class="tiers">
     <div class="tier">
@@ -210,12 +215,23 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       <h3>BazzyBox Flex</h3>
       <div class="price">${flexPrice} <small>per 30 days</small></div>
       <ul>
-        <li><b>${flexTb} TB</b> included, then ${overTb} per TB-month, charged daily</li>
+        <li><b>${flexTb} TB</b> included, then ${overTb} per TB-month, charged daily (Studio is cheaper from 11 TB up)</li>
         <li>${sendFreeGb} GB of share-link downloads a month, then ${sendGb}/GB</li>
         <li>Change plans or cancel any day, unused days refunded as credits</li>
         <li>Renews from your wallet, never a surprise card charge</li>
       </ul>
       <a class="btn go" href="${ctaHref}">${o.signupOpen ? 'Get Flex' : 'Sign in'}</a>
+    </div>
+    <div class="tier">
+      <h3>BazzyBox Studio</h3>
+      <div class="price">${studioPrice} <small>per 30 days</small></div>
+      <ul>
+        <li><b>${studioTb} TB</b> included, then ${studioOver} per TB-month, charged daily</li>
+        <li>${studioSendGb} GB of share-link downloads a month, then ${sendGb}/GB</li>
+        <li>For full productions, catalogs and archives</li>
+        <li>Same any-day switching: unused days come back as credits</li>
+      </ul>
+      <a class="btn" href="${ctaHref}">${o.signupOpen ? 'Get Studio' : 'Sign in'}</a>
     </div>
   </div>
   <h3 style="margin-top:32px">Credit packs</h3>
@@ -227,11 +243,12 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 <div class="wrap two">
   <div>
     <h2>Built for big media files</h2>
-    <p class="mute">Sessions, stems, RAW footage and masters, kept in one private space and stored on IDrive e2's hot object storage.</p>
+    <p class="mute">Sessions, stems, RAW footage and masters, kept in one private space on Backblaze B2's always-hot cloud storage.</p>
     <ul>
       <li><b>Resumable uploads.</b> Multi-gigabyte files survive a dropped connection or a closed laptop.</li>
       <li><b>Play before you download.</b> Scrub video, audition mixes on a waveform player, page through PDFs.</li>
       <li><b>Send to clients.</b> Share links with Range support for streaming, ${sendGb}/GB past your allowance, compared with $0.25/GB on MASV.</li>
+      <li><b>Playlist Maker.</b> Pick mixes, stems or video, add a cover picture and send one link to a player page anyone can open.</li>
       <li><b>Next: publish to Bazzy TV.</b> Send a finished cut from your box straight to your channel. Coming soon.</li>
     </ul>
   </div>
@@ -241,6 +258,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       <thead><tr><th></th><th>Dropbox</th><th>BazzyBox</th></tr></thead>
       <tbody>
         <tr><td>3 TB, one person</td><td class="n">$19.99/mo</td><td class="n us">${flexPrice}/mo</td></tr>
+        <tr><td>15 TB</td><td class="n">$90/mo (3 seats)</td><td class="n us">${studioPrice}/mo</td></tr>
         <tr><td>Downgrade</td><td>End of billing cycle</td><td class="us">Same day, credit back</td></tr>
         <tr><td>Extra space</td><td>Next plan up</td><td class="us">${overTb}/TB, by the day</td></tr>
         <tr><td>Big file sends</td><td>Plan limits</td><td class="us">${sendGb}/GB past ${sendFreeGb} GB</td></tr>
@@ -258,7 +276,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
   <details><summary>What if I'm over the free space when I downgrade?</summary><p>Nothing is deleted. Uploads pause until you're back under the free space or back on Flex. You can still open, play and download everything.</p></details>
   <details><summary>How do credits work?</summary><p>Buy a pack by card and the credits land in your wallet. Flex renews from the wallet every 30 days, and extra storage and paid sends come out of it too. Bigger packs include bonus credits.</p></details>
   <details><summary>Can I get my money back?</summary><p>Unused purchased credits are refundable when you close your account. Contact support and we'll process it.</p></details>
-  <details><summary>Where are my files stored?</summary><p>On IDrive e2, an S3-compatible hot storage service with data centers in North America and Europe. Your files sit in a private space only your account can open.</p></details>
+  <details><summary>Where are my files stored?</summary><p>On Backblaze B2, always-hot cloud storage with data centers in North America and Europe. Your files sit in a private space only your account can open.</p></details>
   <details><summary>Is BazzyBox part of Bazzy TV?</summary><p>Yes. It's the storage side of Bazzy TV, made for the same filmmakers and musicians who stream and publish there.</p></details>
 </div>
 </section>
@@ -277,25 +295,33 @@ export const siteJs = String.raw`
 (() => {
   const el = document.getElementById('calc');
   if (!el) return;
-  const flex = Number(el.dataset.flex) / 100, incl = Number(el.dataset.incl), over = Number(el.dataset.over) / 100;
+  const d = el.dataset;
+  const plans = [
+    ['Flex', Number(d.flex) / 100, Number(d.incl), Number(d.over) / 100],
+    ['Studio', Number(d.studio) / 100, Number(d.sincl), Number(d.sover) / 100],
+  ];
+  /** Cheapest BazzyBox plan for a given amount stored. */
+  const ours = (tb) => plans.map(([name, base, incl, over]) => ({ name, incl, cost: base + Math.max(0, tb - incl) * over }))
+    .reduce((a, b) => (b.cost < a.cost ? b : a));
   const $ = (id) => document.getElementById(id);
   const dropbox = (tb) => tb <= 2 ? [11.99, 'Dropbox Plus, 2 TB']
     : tb <= 3 ? [19.99, 'Dropbox Professional, 3 TB']
     : tb <= 5 ? [54, 'Dropbox Standard, 3 seats, 5 TB']
     : tb <= 15 ? [90, 'Dropbox Advanced, 3 seats, 15 TB']
-    : [90 + Math.ceil(tb - 15) * 10, 'Dropbox Advanced, 3 seats, plus add-on space (estimate)'];
+    : [Math.ceil(tb / 5) * 30, 'Dropbox Advanced, ' + Math.ceil(tb / 5) + ' seats, ' + Math.ceil(tb / 5) * 5 + ' TB'];
   const money = (x) => '$' + (x >= 100 ? Math.round(x).toLocaleString('en-US') : x.toFixed(2));
   const draw = () => {
     const tb = Number($('tb').value);
-    const [d, dl] = dropbox(tb);
-    const b = flex + Math.max(0, tb - incl) * over;
-    const max = Math.max(d, b);
+    const [db, dl] = dropbox(tb);
+    const us = ours(tb), b = us.cost;
+    const max = Math.max(db, b);
     $('tbv').textContent = tb + ' TB';
-    $('vd').textContent = money(d); $('vb').textContent = money(b);
-    $('fd').style.width = (d / max * 100) + '%'; $('fb').style.width = (b / max * 100) + '%';
-    const yr = (d - b) * 12;
-    $('sv').textContent = yr > 0 ? money(yr) : '$0';
-    $('plan').textContent = dl + ' · BazzyBox Flex' + (tb > incl ? ', ' + incl + ' TB + ' + (tb - incl) + ' TB extra' : ', ' + incl + ' TB included');
+    $('tb').setAttribute('aria-valuetext', tb + ' TB');
+    $('vd').textContent = money(db); $('vb').textContent = money(b);
+    $('fd').style.width = (db / max * 100) + '%'; $('fb').style.width = (b / max * 100) + '%';
+    const yr = Math.round((db - b) * 12);
+    $('sv').textContent = '$' + Math.max(0, yr).toLocaleString('en-US');
+    $('plan').textContent = dl + ' · BazzyBox ' + us.name + (tb > us.incl ? ', ' + us.incl + ' TB + ' + (tb - us.incl) + ' TB extra' : ', ' + us.incl + ' TB included');
   };
   $('tb').addEventListener('input', draw);
   draw();

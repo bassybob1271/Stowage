@@ -42,7 +42,7 @@ export const accountIdOfMount = (mountId: string) => (/^box-[0-9a-f]{16}$/.test(
 
 /**
  * Accounts, per-user storage, the credits wallet and the storage meter.
- * Every user's files live in one backing mount (BOX_MOUNT, e.g. IDrive e2) under u/<id>/.
+ * Every user's files live in one backing mount (BOX_MOUNT, e.g. Backblaze B2) under u/<id>/.
  */
 export class BoxService {
   readonly plans: Record<PlanId, Plan>;
@@ -62,13 +62,17 @@ export class BoxService {
   /** Fail fast at boot if the backing mount is missing or of a kind we can't scope per user. */
   validate() {
     const m = this.base;
-    if (!['s3', 'local'].includes(m.def.kind)) throw new Error(`BOX_MOUNT must be an s3 (IDrive e2) or local mount, got ${m.def.kind}`);
+    if (!['s3', 'local'].includes(m.def.kind)) throw new Error(`BOX_MOUNT must be an s3 (Backblaze B2) or local mount, got ${m.def.kind}`);
     if (m.def.readOnly) throw new Error('BOX_MOUNT must be writable');
   }
 
   // ---------- accounts ----------
 
   async signup(emailRaw: string, password: string): Promise<Account> {
+    return this.createAccount(emailRaw, password);
+  }
+
+  private async createAccount(emailRaw: string, password: string): Promise<Account> {
     if (this.cfg.BOX_SIGNUP === 'closed') throw new BoxError(403, 'sign-ups are closed');
     const email = emailRaw.trim().toLowerCase();
     const t = this.db.t.accounts;
@@ -91,6 +95,36 @@ export class BoxService {
     await this.db.orm.insert(t).values(row);
     log.info('box.signup', { account: row.id });
     return row as Account;
+  }
+
+  /**
+   * "Sign in with Bazzy TV". A known Bazzy user gets their linked account. Otherwise a Bazzy-verified
+   * email joins the BazzyBox account with that email, or a new account is made (with an unusable
+   * password: they sign in through Bazzy TV). An unverified email that matches an existing account
+   * is refused, so nobody can claim someone else's files by registering their address on Bazzy TV.
+   */
+  async signInWithBazzy(u: { sub: string; email?: string; emailVerified?: boolean }): Promise<Account> {
+    const links = this.db.t.accountLinks;
+    const linkId = `bazzy:${u.sub}`;
+    const [link] = await this.db.orm.select().from(links).where(eq(links.id, linkId));
+    if (link) return this.get(link.accountId);
+
+    if (!u.email) throw new BoxError(400, 'Bazzy TV did not share an email address');
+    const email = u.email.trim().toLowerCase();
+    const t = this.db.t.accounts;
+    const [existing] = await this.db.orm.select().from(t).where(eq(t.email, email));
+    let account: Account;
+    if (existing) {
+      if (!u.emailVerified) {
+        throw new BoxError(409, 'A BazzyBox account already uses this email. Sign in with your password, or verify your email on Bazzy TV first.', 'email_taken');
+      }
+      account = existing as Account;
+    } else {
+      account = await this.createAccount(email, randomBytes(32).toString('base64url'));
+    }
+    await this.db.orm.insert(links).values({ id: linkId, provider: 'bazzy', subject: u.sub, accountId: account.id, createdAt: new Date(this.now()).toISOString() });
+    log.info('box.bazzy_link', { account: account.id, created: !existing });
+    return account;
   }
 
   /** Constant-time-ish: always runs one argon2 verify so unknown emails cost the same. */
@@ -139,7 +173,7 @@ export class BoxService {
     return { ...info, health: { ok: this.base.health.ok, detail: this.base.health.detail } };
   }
 
-  /** Recount stored bytes by walking the user's folder (e2 charges nothing for API calls). */
+  /** Recount stored bytes by walking the user's folder (B2 charges nothing for these API calls). */
   async refreshUsage(id: string): Promise<number> {
     let total = 0;
     for await (const e of this.mountFor(id).adapter.walk('')) if (!e.isDir) total += e.size;
@@ -167,7 +201,7 @@ export class BoxService {
     const limit = allowedBytes(plan, a.walletMc);
     if (a.usedBytes + Math.max(0, incoming) <= limit) return;
     if (plan.overageCreditsPerTbMonth === null)
-      throw new BoxError(507, `This upload would pass your ${fmtBytes(plan.includedBytes)} free space. Upgrade to Flex for 3 TB.`, 'quota');
+      throw new BoxError(507, `This upload would pass your ${fmtBytes(plan.includedBytes)} free space. Upgrade to Flex for 3 TB or Studio for 15 TB.`, 'quota');
     throw new BoxError(402, `Add credits to store past ${fmtBytes(plan.includedBytes)}: your wallet must cover a week of the extra space.`, 'wallet');
   }
 
@@ -214,14 +248,21 @@ export class BoxService {
     const now = this.now();
     const t = this.db.t.accounts;
     const target = this.plans[to];
+    const current = this.plan(a);
+    // Unused days of the current paid plan always go back to the wallet, whichever way the switch goes.
+    const refund = a.plan === 'free' ? 0 : proratedRefundMc(current, a.periodStart ?? now, a.periodEnd ?? now, now);
+    const refundNote = () => `Unused ${current.label} days returned (${fmtDays(a.periodEnd! - now)})`;
     if (to === 'free') {
-      const refund = proratedRefundMc(this.plan(a), a.periodStart ?? now, a.periodEnd ?? now, now);
-      if (refund > 0) await this.ledger(id, refund, 'refund', `Unused Flex days returned (${fmtDays(a.periodEnd! - now)})`);
+      if (refund > 0) await this.ledger(id, refund, 'refund', refundNote());
       await this.db.orm.update(t).set({ plan: 'free', periodStart: null, periodEnd: null }).where(eq(t.id, id));
       log.info('box.downgrade', { account: id, refundMc: refund });
     } else {
       const price = target.priceCredits * 1000;
-      if (a.walletMc < price) throw new BoxError(402, `Flex costs ${target.priceCredits} credits; your wallet has ${Math.floor(a.walletMc / 1000)}.`, 'wallet');
+      // Check before touching the ledger, so a failed switch leaves the old plan and wallet as they were.
+      if (a.walletMc + refund < price) {
+        throw new BoxError(402, `${target.label} costs ${target.priceCredits} credits; your wallet has ${Math.floor((a.walletMc + refund) / 1000)}${refund > 0 ? ' counting unused days' : ''}.`, 'wallet');
+      }
+      if (refund > 0) await this.ledger(id, refund, 'refund', refundNote());
       await this.ledger(id, -price, 'plan', `${target.label}, 30 days`);
       await this.db.orm.update(t).set({ plan: to, periodStart: now, periodEnd: now + PERIOD_MS, meteredAt: now }).where(eq(t.id, id));
       log.info('box.upgrade', { account: id, plan: to });
@@ -233,7 +274,7 @@ export class BoxService {
 
   /**
    * Daily storage meter and renewals. Charges each full day past the included space,
-   * renews Flex from the wallet, and drops to Free (never deleting files) if the wallet can't pay.
+   * renews paid plans from the wallet, and drops to Free (never deleting files) if the wallet can't pay.
    */
   async meter(id: string) {
     const now = this.now();
@@ -246,7 +287,7 @@ export class BoxService {
         await this.ledger(id, -p.priceCredits * 1000, 'plan', `${p.label} renewal, 30 days`);
         await this.db.orm.update(t).set({ periodStart: a.periodEnd, periodEnd: a.periodEnd + PERIOD_MS }).where(eq(t.id, id));
       } else {
-        await this.ledger(id, 0, 'plan', 'Wallet too low to renew Flex; moved to Free. Your files are untouched.');
+        await this.ledger(id, 0, 'plan', `Wallet too low to renew ${p.label}; moved to Free. Your files are untouched.`);
         await this.db.orm.update(t).set({ plan: 'free', periodStart: null, periodEnd: null }).where(eq(t.id, id));
       }
       a = await this.get(id);

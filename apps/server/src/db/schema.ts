@@ -86,6 +86,31 @@ export const sqliteLedger = s.sqliteTable('ledger', {
   createdAt: s.text('created_at').notNull(),
 });
 
+/** Outside sign-ins linked to a BazzyBox account (Bazzy TV today). id = `${provider}:${subject}`. */
+export const sqliteAccountLinks = s.sqliteTable('account_links', {
+  id: s.text('id').primaryKey(),
+  provider: s.text('provider').notNull(),
+  subject: s.text('subject').notNull(),
+  accountId: s.text('account_id').notNull(),
+  createdAt: s.text('created_at').notNull(),
+});
+
+export const sqlitePlaylists = s.sqliteTable('playlists', {
+  id: s.text('id').primaryKey(),
+  accountId: s.text('account_id').notNull(),
+  title: s.text('title').notNull(),
+  description: s.text('description').notNull(),
+  /** JSON array of file paths in the owner's folder, in play order. */
+  items: s.text('items').notNull(),
+  /** Cover picture, base64 (resized in the browser, at most ~1.5 MB). */
+  cover: s.text('cover'),
+  coverType: s.text('cover_type'),
+  shareToken: s.text('share_token').unique(),
+  plays: s.integer('plays').notNull().default(0),
+  createdAt: s.text('created_at').notNull(),
+  updatedAt: s.text('updated_at').notNull(),
+});
+
 // ---------- Postgres ----------
 export const pgFiles = p.pgTable(
   'files',
@@ -164,6 +189,28 @@ export const pgLedger = p.pgTable('ledger', {
   createdAt: p.text('created_at').notNull(),
 });
 
+export const pgAccountLinks = p.pgTable('account_links', {
+  id: p.text('id').primaryKey(),
+  provider: p.text('provider').notNull(),
+  subject: p.text('subject').notNull(),
+  accountId: p.text('account_id').notNull(),
+  createdAt: p.text('created_at').notNull(),
+});
+
+export const pgPlaylists = p.pgTable('playlists', {
+  id: p.text('id').primaryKey(),
+  accountId: p.text('account_id').notNull(),
+  title: p.text('title').notNull(),
+  description: p.text('description').notNull(),
+  items: p.text('items').notNull(),
+  cover: p.text('cover'),
+  coverType: p.text('cover_type'),
+  shareToken: p.text('share_token').unique(),
+  plays: p.bigint('plays', { mode: 'number' }).notNull().default(0),
+  createdAt: p.text('created_at').notNull(),
+  updatedAt: p.text('updated_at').notNull(),
+});
+
 /** Idempotent DDL. Kept as plain SQL so boot needs no migration tool. */
 export function ddl(dialect: 'sqlite' | 'pg'): string[] {
   const big = dialect === 'pg' ? 'BIGINT' : 'INTEGER';
@@ -191,5 +238,12 @@ export function ddl(dialect: 'sqlite' | 'pg'): string[] {
       id TEXT PRIMARY KEY, account_id TEXT NOT NULL, delta_mc ${big} NOT NULL, kind TEXT NOT NULL, note TEXT NOT NULL,
       ref TEXT UNIQUE, created_at TEXT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS ledger_account ON ledger (account_id, created_at)`,
+    `CREATE TABLE IF NOT EXISTS account_links (
+      id TEXT PRIMARY KEY, provider TEXT NOT NULL, subject TEXT NOT NULL, account_id TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS account_links_account ON account_links (account_id)`,
+    `CREATE TABLE IF NOT EXISTS playlists (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, items TEXT NOT NULL,
+      cover TEXT, cover_type TEXT, share_token TEXT UNIQUE, plays ${big} NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS playlists_account ON playlists (account_id, updated_at)`,
   ];
 }

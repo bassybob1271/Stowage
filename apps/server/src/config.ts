@@ -38,13 +38,20 @@ const schema = z.object({
   // ---------- BazzyBox (multi-user, plans, credits) ----------
   /** Turn on email/password accounts, per-user storage, plans and the credits wallet. */
   BAZZYBOX: bool.default('false'),
-  /** Mount (from mounts.yaml) that holds every user's files, each under u/<id>/. Point it at IDrive e2. */
+  /** Mount (from mounts.yaml) that holds every user's files, each under u/<id>/. Point it at Backblaze B2. */
   BOX_MOUNT: z.string().default('box'),
   BOX_FREE_GB: z.coerce.number().positive().default(10),
   /** open = anyone can sign up; closed = only existing accounts. */
   BOX_SIGNUP: z.enum(['open', 'closed']).default('open'),
   /** Bazzy TV video site, linked from the BazzyBox website. Empty hides the link. */
   BAZZY_TV_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://live.bazzy.io'),
+  /**
+   * "Sign in with Bazzy TV": the Bazzy TV website (bazzy-video) is the login provider.
+   * Register BazzyBox in Bazzy TV's OAUTH_CLIENTS with redirect URI {APP_ORIGIN}/api/auth/bazzy/callback.
+   */
+  BAZZY_AUTH_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)),
+  BAZZY_CLIENT_ID: z.string().default('bazzybox'),
+  BAZZY_CLIENT_SECRET: z.string().optional().or(z.literal('').transform(() => undefined)),
   /** Grant credits without payment (local testing only; refused in production). */
   BOX_DEV_CREDITS: bool.default('false'),
   STRIPE_SECRET_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),

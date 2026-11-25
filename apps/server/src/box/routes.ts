@@ -15,7 +15,7 @@ const credsSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(10, 'password must be at least 10 characters').max(256),
 });
-const planSchema = z.object({ plan: z.enum(['free', 'flex']) });
+const planSchema = z.object({ plan: z.enum(['free', 'flex', 'studio']) });
 const packSchema = z.object({ pack: z.enum(Object.keys(PACKS) as [PackId, ...PackId[]]) });
 const shareSchema = z.object({ path: z.string().min(1), days: z.number().int().min(1).max(90).default(7) });
 

@@ -27,7 +27,7 @@ export function Billing({ onClose }: { onClose: () => void }) {
     mutationFn: api.box.setPlan,
     onSuccess: (s) => {
       set(s);
-      toast(s.plan.id === 'flex' ? 'You are on Flex: 3 TB.' : 'Moved to Free. Unused days went back to your wallet.');
+      toast(s.plan.id === 'free' ? 'Moved to Free. Unused days went back to your wallet.' : `You are on ${s.plan.label}: ${fmtBytes(s.plan.includedBytes)}.`);
     },
     onError: (e) => toast((e as Error).message, 'error'),
   });
@@ -47,7 +47,7 @@ export function Billing({ onClose }: { onClose: () => void }) {
   async function downgrade() {
     const ok = await confirmDialog({
       title: 'Switch to Free?',
-      message: 'Unused Flex days go back to your wallet as credits right now. Files over the free space stay safe; uploads pause until you are under it or switch back.',
+      message: `Unused ${me.data?.plan.label ?? 'plan'} days go back to your wallet as credits right now. Files over the free space stay safe; uploads pause until you are under it or switch back.`,
       confirm: 'Switch to Free',
     });
     if (ok) plan.mutate('free');
@@ -70,7 +70,7 @@ export function Billing({ onClose }: { onClose: () => void }) {
           <div className="p-4 flex flex-col gap-6 text-sm">
             <Meter s={s} />
 
-            <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {s.plans.map((p) => {
                 const current = s.plan.id === p.id;
                 return (
@@ -89,11 +89,11 @@ export function Billing({ onClose }: { onClose: () => void }) {
                       </p>
                     ) : (
                       <button
-                        className={`btn mt-2 justify-center ${p.id === 'flex' ? 'btn-primary' : ''}`}
+                        className={`btn mt-2 justify-center ${p.id !== 'free' ? 'btn-primary' : ''}`}
                         disabled={plan.isPending}
-                        onClick={() => (p.id === 'free' ? void downgrade() : plan.mutate('flex'))}
+                        onClick={() => (p.id === 'free' ? void downgrade() : plan.mutate(p.id))}
                       >
-                        {p.id === 'flex' ? `Upgrade for ${fmtCredits(p.priceCredits)} credits` : 'Switch to Free'}
+                        {p.id === 'free' ? 'Switch to Free' : `${s.plan.id === 'free' || p.priceCredits > s.plan.priceCredits ? 'Upgrade' : 'Switch'} for ${fmtCredits(p.priceCredits)} credits`}
                       </button>
                     )}
                   </div>

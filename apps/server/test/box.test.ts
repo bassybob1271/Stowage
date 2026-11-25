@@ -11,7 +11,7 @@ import { signWebhook, verifyWebhook } from '../src/box/stripe.js';
 import { DAY_MS, GB, TB, allowedBytes, dailyOverageMc, plans, proratedRefundMc, sendChargeMc } from '../src/box/pricing.js';
 
 const dir = mkdtempSync(join(tmpdir(), 'bazzybox-'));
-writeFileSync(join(dir, 'mounts.yaml'), `mounts:\n  - id: box\n    label: e2\n    kind: local\n    config: { root: "${join(dir, 'files')}" }\n`);
+writeFileSync(join(dir, 'mounts.yaml'), `mounts:\n  - id: box\n    label: b2\n    kind: local\n    config: { root: "${join(dir, 'files')}" }\n`);
 
 const env = {
   NODE_ENV: 'test',
@@ -213,6 +213,45 @@ describe('meter and renewals', () => {
     s = await box.summary(a.id);
     expect(s.plan.id).toBe('flex');
     expect(s.wallet.credits).toBeCloseTo(2501 - 999 * 2, 0);
+  });
+});
+
+describe('Studio plan', () => {
+  it('prices Studio at $79.99 for 15 TB, then $6 per TB-month', () => {
+    const s = plans().studio;
+    expect(s.priceCredits).toBe(7999);
+    expect(s.includedBytes).toBe(15 * TB);
+    expect(dailyOverageMc(s, 5 * TB) * 30).toBeCloseTo(5 * 600 * 1000, -2);
+  });
+
+  it('refuses a switch the wallet cannot cover and leaves plan and wallet untouched', async () => {
+    let clock = Date.now();
+    const box = new BoxService(cfg, db, ctx.mounts, () => clock);
+    const a = await box.signup('dana@example.com', 'correct horse battery');
+    await box.ledger(a.id, 7_999_000, 'topup', 'test');
+    await box.changePlan(a.id, 'flex'); // wallet 7,000
+    clock += 15 * DAY_MS; // ~499 unused Flex credits: 7,499 < 7,999
+    await expect(box.changePlan(a.id, 'studio')).rejects.toMatchObject({ status: 402 });
+    const s = await box.summary(a.id);
+    expect(s.plan.id).toBe('flex');
+    expect(s.wallet.credits).toBe(7000);
+    expect(s.history.some((h) => h.kind === 'refund')).toBe(false);
+  });
+
+  it('switches Flex to Studio mid-period, crediting unused Flex days first', async () => {
+    let clock = Date.now();
+    const box = new BoxService(cfg, db, ctx.mounts, () => clock);
+    const a = await box.signup('erin@example.com', 'correct horse battery');
+    await box.ledger(a.id, 8_600_000, 'topup', 'test');
+    await box.changePlan(a.id, 'flex'); // wallet 7,601
+    clock += 15 * DAY_MS;
+    await box.changePlan(a.id, 'studio');
+    const s = await box.summary(a.id);
+    expect(s.plan.id).toBe('studio');
+    expect(s.plan.includedBytes).toBe(15 * TB);
+    // 7,601 + 499.5 unused Flex days - 7,999 Studio
+    expect(s.wallet.credits).toBeCloseTo(7601 + 999 / 2 - 7999, 0);
+    expect(s.history.map((h) => h.kind).slice(0, 2)).toEqual(['plan', 'refund']);
   });
 });
 

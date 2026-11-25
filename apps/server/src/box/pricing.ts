@@ -5,6 +5,10 @@
  * The numbers come from the BazzyBox revenue model (docs/BAZZYBOX.md):
  * Flex is $9.99/30 days for 3 TB, extra storage $9.50 per TB-month metered
  * daily, sends free up to a monthly allowance then 4 credits per GB.
+ * Studio is $79.99/30 days for 15 TB, then $6 per TB-month: it stays under Dropbox
+ * Advanced ($90 for 15 TB on 3 seats, $120 for 20 TB on 4) all the way to 20 TB.
+ * Storage runs on Backblaze B2 ($6.95/TB-month pay-as-you-go). Studio is below cost when full
+ * (15 TB ≈ $115/month to host) and its $6/TB extra is under B2's price; see docs/BAZZYBOX.md.
  */
 
 export const MC_PER_CREDIT = 1000;
@@ -13,7 +17,7 @@ export const PERIOD_DAYS = 30;
 export const TB = 1e12;
 export const GB = 1e9;
 
-export type PlanId = 'free' | 'flex';
+export type PlanId = 'free' | 'flex' | 'studio';
 
 export interface Plan {
   id: PlanId;
@@ -31,6 +35,7 @@ export function plans(freeGb = 10): Record<PlanId, Plan> {
   return {
     free: { id: 'free', label: 'Free', priceCredits: 0, includedBytes: freeGb * GB, overageCreditsPerTbMonth: null, sendFreeBytes: 2 * GB },
     flex: { id: 'flex', label: 'BazzyBox Flex', priceCredits: 999, includedBytes: 3 * TB, overageCreditsPerTbMonth: 950, sendFreeBytes: 50 * GB },
+    studio: { id: 'studio', label: 'BazzyBox Studio', priceCredits: 7999, includedBytes: 15 * TB, overageCreditsPerTbMonth: 600, sendFreeBytes: 250 * GB },
   };
 }
 
