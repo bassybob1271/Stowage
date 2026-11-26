@@ -70,7 +70,7 @@ Setup: set `LIVE_BAZZY_AUTH_URL`, `LIVE_BAZZY_CLIENT_SECRET` and `LIVE_SESSION_S
 
 ## Recordings and replay (Backblaze B2)
 
-With `LIVE_RECORD=true`, MediaMTX records each show's original feed (fragmented MP4, split every `LIVE_RECORD_SEGMENT`). About a minute after a show ends, it's uploaded to the `BazzyLive` B2 bucket (`LIVE_B2_*`), the local copy is removed, and it appears under **Past shows** on the home page, the channel page and the creator's Studio, at `/replay/<id>`. Replays play straight from B2 through short-lived signed links, so they don't use the Mac's upload bandwidth. Creators can delete their own recordings. Shows shorter than 10 s are dropped. Without the `LIVE_B2_*` settings, recordings stay in `data/recordings` and are served from this machine.
+With `LIVE_RECORD=true`, MediaMTX records each show's original feed (fragmented MP4, split every `LIVE_RECORD_SEGMENT`). About a minute after a show ends, it's uploaded to the `bazzylive` B2 bucket (Backblaze names are case-insensitive, but its S3 API only accepts lowercase) (`LIVE_B2_*`), the local copy is removed, and it appears under **Past shows** on the home page, the channel page and the creator's Studio, at `/replay/<id>`. Replays play straight from B2 through short-lived signed links, so they don't use the Mac's upload bandwidth. Creators can delete their own recordings. Shows shorter than 10 s are dropped. Without the `LIVE_B2_*` settings, recordings stay in `data/recordings` and are served from this machine.
 
 ## Running on the Mac mini
 
