@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, ExternalLink, Film, Folder, ImagePlus, Link2, ListMusic, Music, Plus, Trash2, X,
+  ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, ExternalLink, Film, Folder, ImagePlus, Link2, ListMusic, Music, Plus, Trash2, Upload, X,
 } from 'lucide-react';
 import { mimeFor, type FileStat } from '@stowage/shared';
 import { api, type Playlist } from '../api';
 import { confirmDialog, promptDialog, toast } from './Dialogs';
+import { enqueue, onUploadDone } from '../uploads';
 
 const VIDEO_OK = new Set(['video/mp4', 'video/x-m4v', 'video/webm', 'video/quicktime', 'video/ogg']);
 /** Same rule as the server: any audio, plus video a browser can play. */
@@ -367,6 +368,27 @@ function Picker({ mount, already, onAdd, onCancel }: { mount: string; already: S
   const files = entries.filter((f) => !f.isDir && !already.has(f.path));
   const crumbs = path ? path.split('/') : [];
   const toggle = (p: string) => setChosen((xs) => (xs.includes(p) ? xs.filter((x) => x !== p) : [...xs, p]));
+  // Upload from this computer straight into the folder being shown, then tick the new tracks.
+  const input = useRef<HTMLInputElement>(null);
+  const [sending, setSending] = useState(0);
+  useEffect(
+    () =>
+      onUploadDone((u) => {
+        if (u.mount !== mount || u.dir !== path) return;
+        const p = [u.dir, u.relPath].filter(Boolean).join('/');
+        setSending((n) => Math.max(0, n - 1));
+        void q.refetch();
+        if (playable(p)) setChosen((xs) => (xs.includes(p) ? xs : [...xs, p]));
+      }),
+    [mount, path, q],
+  );
+  const upload = (list: FileList | null) => {
+    const picked = [...(list ?? [])].filter((f) => playable(f.name));
+    if (!picked.length) return toast('Pick audio or video files');
+    setSending((n) => n + picked.length);
+    enqueue(picked.map((file) => ({ file, relPath: file.name })), mount, path);
+    if (input.current) input.current.value = '';
+  };
 
   return (
     <div className="flex flex-col h-full text-sm">
@@ -407,8 +429,12 @@ function Picker({ mount, already, onAdd, onCancel }: { mount: string; already: S
           ),
         )}
       </ul>
-      <div className="px-4 py-3 border-t border-line flex items-center gap-2">
+      <div className="px-4 py-3 border-t border-line flex items-center gap-2 flex-wrap">
         <button className="btn" onClick={onCancel}>Cancel</button>
+        <button className="btn" onClick={() => input.current?.click()} title="Upload songs or videos from this computer into this folder">
+          <Upload size={16} /> {sending ? `Uploading ${sending}…` : 'From computer'}
+        </button>
+        <input ref={input} type="file" multiple hidden accept="audio/*,video/*,.flac,.m4a,.aac,.opus,.wav,.mp3,.mp4,.mov,.m4v,.webm" onChange={(e) => upload(e.currentTarget.files)} />
         <button className="btn btn-primary ml-auto" disabled={!chosen.length} onClick={() => onAdd(chosen)}>
           Add {chosen.length || ''} {chosen.length === 1 ? 'track' : 'tracks'}
         </button>
