@@ -5,10 +5,10 @@
 #   curl -fsSL https://raw.githubusercontent.com/bassybob1271/Stowage/main/deploy/mac-mini/setup.sh | bash
 #   (or: bash deploy/mac-mini/setup.sh from a clone)
 #
-# Before running, AirDrop these from the old machine (they're not in Git):
-#   apps/live/.env  → ~/Stowage/apps/live/.env   (the script tells you if they're missing)
-#   .env            → ~/Stowage/.env              (BazzyBox, with BAZZYBOX=true)
-#   ~/.cloudflared/cert.pem and ~/.cloudflared/<tunnel-id>.json → ~/.cloudflared/
+# Before running, copy the tunnel files from the old machine into ~/.cloudflared/:
+#   ~/.cloudflared/cert.pem and ~/.cloudflared/<tunnel-id>.json
+# Settings (.env, apps/live/.env, mounts.yaml) are copied over if you have them; otherwise
+# make-env.sh creates them and asks for your Backblaze B2 keys.
 # Without the tunnel files it signs in to Cloudflare and makes a new tunnel instead.
 #
 # Options (environment variables):
@@ -51,11 +51,10 @@ else
 fi
 cd "$DIR"
 
-missing=0
-for f in apps/live/.env .env; do
-  [ -f "$f" ] || { echo "  missing $DIR/$f — AirDrop it from the old Mac (see the top of this script)"; missing=1; }
-done
-[ $missing = 0 ] || { echo "Add the files above, then run this script again."; exit 1; }
+if [ ! -f .env ] || [ ! -f apps/live/.env ] || [ ! -f mounts.yaml ]; then
+  say "Settings (no .env files yet: making new ones)"
+  bash deploy/mac-mini/make-env.sh
+fi
 grep -q '^BAZZYBOX=true' .env || echo "  note: .env has no BAZZYBOX=true, so BazzyBox won't start"
 
 say "Install and build"
