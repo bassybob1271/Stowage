@@ -60,8 +60,9 @@ grep -q '^BAZZYBOX=true' .env || echo "  note: .env has no BAZZYBOX=true, so Baz
 say "Install and build"
 pnpm install --frozen-lockfile
 pnpm --filter @stowage/live fetch-bins
+# "server..." also builds the shared + storage packages it imports.
 pnpm --filter @stowage/web build
-pnpm --filter @stowage/server build
+pnpm --filter "@stowage/server..." build
 
 say "Cloudflare Tunnel '$TUNNEL'"
 CF="$DIR/apps/live/bin/cloudflared"
