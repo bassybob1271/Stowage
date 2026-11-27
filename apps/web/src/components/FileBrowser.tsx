@@ -49,6 +49,9 @@ async function collectDropped(items: DataTransferItemList): Promise<{ file: File
   return out;
 }
 
+/** Marks a drag that started inside the file list (a move, not an upload). */
+const DRAG_TYPE = 'application/x-bazzybox-paths';
+
 export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; path: string; open: string | null; filter: string }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['list', mount.id, path], queryFn: () => api.listAll(mount.id, path) });
@@ -59,6 +62,10 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
   const [focus, setFocus] = useState<number>(-1);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  /** Paths being dragged inside the app (dataTransfer can't be read during dragover). */
+  const dragging = useRef<string[]>([]);
+  /** Folder (path; '' = mount root) that something is being dragged over. */
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const starred = useStore(starredStore);
   const pane = useRef<HTMLDivElement>(null);
 
@@ -139,6 +146,29 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
         toast((err as Error).message, 'error');
         await refresh();
       }
+    },
+    /** Drag-and-drop move: put these paths inside `dest` ('' = top of the mount). */
+    async moveInto(paths: string[], dest: string) {
+      const items = paths.filter((p) => canDropInto([p], dest));
+      if (!items.length) return;
+      let moved = 0;
+      const clashes: string[] = [];
+      for (const from of items) {
+        const name = from.split('/').pop()!;
+        try {
+          await api.move(mount.id, from, dest ? `${dest}/${name}` : name);
+          forgetPlace(mount.id, from);
+          moved++;
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) clashes.push(name);
+          else toast((err as Error).message, 'error');
+        }
+      }
+      setSelected(new Set());
+      await refresh();
+      const where = dest ? `“${dest.split('/').pop()}”` : mount.label;
+      if (moved) toast(`Moved ${moved === 1 ? `“${items[0]!.split('/').pop()}”` : `${moved} items`} to ${where}`);
+      if (clashes.length) toast(`${where} already has ${clashes.length === 1 ? `“${clashes[0]}”` : `${clashes.length} items with those names`}; left in place`, 'error');
     },
     async remove(items: FileStat[]) {
       if (!items.length) return;
@@ -234,6 +264,26 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
     setFocus(i);
   }
 
+  // New folder: ⌘N / Ctrl+N where the browser lets a page have it, plus ⇧N and ⌥⌘N, which always work.
+  const newFolderRef = useRef(act.newFolder);
+  newFolderRef.current = act.newFolder;
+  useEffect(() => {
+    if (mount.readOnly || open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'KeyN' || e.repeat) return;
+      const t = e.target as HTMLElement;
+      if (t.closest('input,textarea,select,[contenteditable],[role=dialog]')) return;
+      const cmd = e.metaKey || e.ctrlKey;
+      const shiftOnly = e.shiftKey && !cmd && !e.altKey;
+      const cmdN = cmd && !e.shiftKey; // ⌘N or ⌥⌘N
+      if (!shiftOnly && !cmdN) return;
+      e.preventDefault();
+      void newFolderRef.current();
+    };
+    addEventListener('keydown', onKeyDown);
+    return () => removeEventListener('keydown', onKeyDown);
+  }, [mount.readOnly, open]);
+
   // ---------- keyboard ----------
   function onKey(ev: React.KeyboardEvent) {
     if ((ev.target as HTMLElement).closest('input,textarea,[contenteditable]')) return;
@@ -276,9 +326,62 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
   }
 
   // ---------- drag & drop ----------
+  /** A folder can take these items unless it is one of them, inside one of them, or already their parent. */
+  function canDropInto(paths: string[], dest: string) {
+    return paths.some((p) => p !== dest && !dest.startsWith(p + '/') && parentOf(p) !== dest);
+  }
+  function startDrag(ev: DragEvent, e: FileStat) {
+    if (mount.readOnly) return ev.preventDefault();
+    const paths = selected.has(e.path) ? [...selected] : [e.path];
+    if (!selected.has(e.path)) setSelected(new Set([e.path]));
+    ev.dataTransfer.setData(DRAG_TYPE, JSON.stringify(paths));
+    ev.dataTransfer.effectAllowed = 'move';
+    dragging.current = paths;
+    if (paths.length > 1) {
+      const badge = document.createElement('div');
+      badge.textContent = `${paths.length} items`;
+      badge.style.cssText = 'position:fixed;top:-100px;left:0;padding:6px 12px;border-radius:999px;background:#ff3d5a;color:#fff;font:600 13px system-ui';
+      document.body.appendChild(badge);
+      ev.dataTransfer.setDragImage(badge, 10, 10);
+      setTimeout(() => badge.remove(), 0);
+    }
+  }
+  /** Props that make a folder (or breadcrumb) accept dragged items, and outside files to upload into it. */
+  function dropZone(dest: string) {
+    return {
+      onDragOver: (ev: DragEvent) => {
+        const internal = ev.dataTransfer.types.includes(DRAG_TYPE);
+        if (mount.readOnly || (!internal && !ev.dataTransfer.types.includes('Files'))) return;
+        if (internal && !canDropInto(dragging.current, dest)) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.dataTransfer.dropEffect = internal ? 'move' : 'copy';
+        if (dropTarget !== dest) setDropTarget(dest);
+        setDragOver(false);
+      },
+      onDragLeave: (ev: DragEvent) => {
+        if (!(ev.currentTarget as Node).contains(ev.relatedTarget as Node | null)) setDropTarget((t) => (t === dest ? null : t));
+      },
+      onDrop: async (ev: DragEvent) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        setDropTarget(null);
+        setDragOver(false);
+        const raw = ev.dataTransfer.getData(DRAG_TYPE);
+        if (raw) return void act.moveInto(JSON.parse(raw) as string[], dest);
+        const items = ev.dataTransfer.items;
+        let files = items ? await collectDropped(items) : [];
+        if (!files.length) files = [...ev.dataTransfer.files].map((f) => ({ file: f, relPath: f.name }));
+        if (files.length) enqueue(files, mount.id, dest);
+      },
+    };
+  }
+
   async function onDrop(ev: DragEvent) {
     ev.preventDefault();
     setDragOver(false);
+    setDropTarget(null);
+    if (ev.dataTransfer.types.includes(DRAG_TYPE)) return; // dropped back where it was
     if (mount.readOnly) return toast('This mount is read-only', 'error');
     const items = ev.dataTransfer.items;
     let files = items ? await collectDropped(items) : [];
@@ -296,7 +399,7 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
       {/* toolbar */}
       <div className="shrink-0 flex items-center gap-1 px-3 py-2 border-b border-line flex-wrap">
         <nav aria-label="Breadcrumb" className="flex items-center gap-0.5 text-sm min-w-0 flex-1 overflow-x-auto">
-          <a href={href(mount.id)} onClick={(e) => (e.preventDefault(), navigate(href(mount.id)))} className="px-1.5 py-1 rounded hover-row font-medium shrink-0">
+          <a href={href(mount.id)} onClick={(e) => (e.preventDefault(), navigate(href(mount.id)))} {...dropZone('')} className={`px-1.5 py-1 rounded hover-row font-medium shrink-0 ${dropTarget === '' ? 'ring-2 ring-[var(--color-accent)] bg-accent-soft' : ''}`}>
             {mount.label}
           </a>
           {crumbs.map((c, i) => {
@@ -304,7 +407,7 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
             return (
               <span key={p} className="flex items-center gap-0.5 shrink-0">
                 <ChevronRight size={14} className="text-muted" />
-                <a href={href(mount.id, p)} onClick={(e) => (e.preventDefault(), navigate(href(mount.id, p)))} className={`px-1.5 py-1 rounded hover-row ${i === crumbs.length - 1 ? 'font-medium' : ''}`} aria-current={i === crumbs.length - 1 ? 'page' : undefined}>
+                <a href={href(mount.id, p)} onClick={(e) => (e.preventDefault(), navigate(href(mount.id, p)))} {...(i < crumbs.length - 1 ? dropZone(p) : {})} className={`px-1.5 py-1 rounded hover-row ${i === crumbs.length - 1 ? 'font-medium' : ''} ${dropTarget === p ? 'ring-2 ring-[var(--color-accent)] bg-accent-soft' : ''}`} aria-current={i === crumbs.length - 1 ? 'page' : undefined}>
                   {c}
                 </a>
               </span>
@@ -322,7 +425,7 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
           <div className="flex items-center gap-1">
             {mount.capabilities.contentAddressed && <span className="text-[11px] px-1.5 py-0.5 rounded bg-accent-soft text-accent" title="Content-addressed (IPFS)">IPFS</span>}
             {mount.emulated.length > 0 && <span className="text-[11px] px-1.5 py-0.5 rounded border border-line text-muted" title={`Emulated: ${mount.emulated.join(', ')}`}>emulated: {mount.emulated.join(', ')}</span>}
-            {!mount.readOnly && <button className="btn btn-icon" title="New folder" aria-label="New folder" onClick={() => void act.newFolder()}><FolderPlus size={17} /></button>}
+            {!mount.readOnly && <button className="btn btn-icon" title="New folder (⇧N or ⌥⌘N)" aria-label="New folder" onClick={() => void act.newFolder()}><FolderPlus size={17} /></button>}
             <button className="btn btn-icon" title="Refresh" aria-label="Refresh" onClick={() => void refresh()}><RefreshCw size={16} className={q.isFetching ? 'animate-spin' : ''} /></button>
           </div>
         )}
@@ -347,6 +450,12 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
           setMenu({ x: e.clientX, y: e.clientY });
         }}
         onDragOver={(e) => {
+          if (e.dataTransfer.types.includes(DRAG_TYPE)) {
+            e.preventDefault(); // allow the drop so the browser doesn't animate a "rejected" snap-back
+            e.dataTransfer.dropEffect = 'none';
+            if (dropTarget !== null) setDropTarget(null);
+            return;
+          }
           if (e.dataTransfer.types.includes('Files')) {
             e.preventDefault();
             setDragOver(true);
@@ -401,7 +510,11 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
                     key={e.path}
                     id={`row-${i}`}
                     aria-selected={isSel}
-                    className={`border-b border-line/50 cursor-default ${isSel ? 'bg-sel' : 'hover-row'} ${focus === i ? 'outline outline-1 -outline-offset-1 outline-[var(--color-accent)]' : ''}`}
+                    className={`border-b border-line/50 cursor-default ${isSel ? 'bg-sel' : 'hover-row'} ${focus === i ? 'outline outline-1 -outline-offset-1 outline-[var(--color-accent)]' : ''} ${e.isDir && dropTarget === e.path ? 'bg-accent-soft outline outline-2 -outline-offset-2 outline-[var(--color-accent)]' : ''}`}
+                    draggable={!mount.readOnly}
+                    onDragStart={(ev) => startDrag(ev, e)}
+                    onDragEnd={() => ((dragging.current = []), setDropTarget(null))}
+                    {...(e.isDir ? dropZone(e.path) : {})}
                     onClick={(ev) => clickRow(ev, i)}
                     onDoubleClick={() => openEntry(e)}
                     onContextMenu={(ev) => {
@@ -443,7 +556,11 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
                   id={`row-${i}`}
                   role="option"
                   aria-selected={isSel}
-                  className={`group rounded-lg p-2 flex flex-col gap-1.5 cursor-default relative ${isSel ? 'bg-sel' : 'hover-row'} ${focus === i ? 'outline outline-1 outline-[var(--color-accent)]' : ''}`}
+                  className={`group rounded-lg p-2 flex flex-col gap-1.5 cursor-default relative ${isSel ? 'bg-sel' : 'hover-row'} ${focus === i ? 'outline outline-1 outline-[var(--color-accent)]' : ''} ${e.isDir && dropTarget === e.path ? 'bg-accent-soft outline outline-2 outline-[var(--color-accent)]' : ''}`}
+                  draggable={!mount.readOnly}
+                  onDragStart={(ev) => startDrag(ev, e)}
+                  onDragEnd={() => ((dragging.current = []), setDropTarget(null))}
+                  {...(e.isDir ? dropZone(e.path) : {})}
                   onClick={(ev) => clickRow(ev, i)}
                   onDoubleClick={() => openEntry(e)}
                   onContextMenu={(ev) => {
