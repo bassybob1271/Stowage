@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pause, Play, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, X, ListMusic } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { formatDuration } from '../lib/format';
+import { VolumeControl } from './VolumeControl';
 import { player, playerStore } from '../player';
 
 /** Persistent mini-player: rendered once at the shell level, so audio keeps playing while you browse. */
@@ -41,8 +42,8 @@ export function MiniPlayer() {
         <button className={`btn btn-icon ${s.repeat !== 'off' ? 'text-[var(--color-accent)]' : ''}`} aria-label={`Repeat: ${s.repeat}`} onClick={player.cycleRepeat}>
           {s.repeat === 'one' ? <Repeat1 size={15} /> : <Repeat size={15} />}
         </button>
-        <input type="range" min={0} max={1} step={0.01} value={s.volume} onChange={(e) => player.setVolume(Number(e.target.value))} className="w-20 accent-[var(--color-accent)]" aria-label="Volume" />
       </div>
+      <VolumeControl width="w-16 sm:w-20 hidden min-[420px]:block" />
       <button className="btn btn-icon" aria-label="Queue" aria-expanded={queueOpen} onClick={() => setQueueOpen((o) => !o)}><ListMusic size={16} /></button>
       <button className="btn btn-icon" aria-label="Close player" onClick={player.stop}><X size={16} /></button>
       {queueOpen && (

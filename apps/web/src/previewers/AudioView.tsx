@@ -6,6 +6,7 @@ import { useStore } from '../lib/store';
 import { formatDuration } from '../lib/format';
 import { enqueueTrack, player, playerStore, playFolder } from '../player';
 import type { PreviewProps } from './registry';
+import { VolumeControl } from '../components/VolumeControl';
 import { CommentMarkers, CommentPanel, useTimedComments } from '../components/Comments';
 
 const AUDIO_RE = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac|weba)$/i;
@@ -115,6 +116,7 @@ export default function AudioView({ mount, file, url, siblings }: PreviewProps) 
             {s.repeat === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
           </button>
           <button className="btn btn-icon hover:!bg-white/10" aria-label="Add to queue" title="Add to queue" onClick={() => enqueueTrack({ mount: mount.id, path: file.path, name: file.name })}><ListPlus size={18} /></button>
+          <VolumeControl dark className="ml-2" width="w-28" />
         </div>
         <CommentPanel
           className="w-full max-h-[28rem]"
