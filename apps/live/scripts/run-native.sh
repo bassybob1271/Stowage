@@ -24,7 +24,7 @@ if [ -f "$HOME/Library/LaunchAgents/tv.bazzy.ingest.plist" ] || [ "${STOWAGE_LIV
 else
   keep live "$live" node --import ./node_modules/tsx/dist/loader.mjs --env-file=.env src/main.ts
 fi
-# BazzyBox (box.bazzy.io): run the Stowage server too when the root .env turns it on.
+# BazzyBox (box.bazzy.tv): run the Stowage server too when the root .env turns it on.
 # Build it first: pnpm --filter @stowage/web build && pnpm --filter @stowage/server build
 if [ -f "$root/.env" ] && grep -q '^BAZZYBOX=true' "$root/.env"; then
   keep box "$root" node --env-file=.env apps/server/dist/main.js

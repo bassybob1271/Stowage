@@ -103,11 +103,23 @@ export function Billing({ onClose }: { onClose: () => void }) {
 
             <section className="flex flex-col gap-2">
               <div className="flex items-baseline gap-2">
-                <h3 className="font-semibold">Wallet</h3>
+                <h3 className="font-semibold">{s.wallet.shared ? 'Bazzy wallet' : 'Wallet'}</h3>
                 <span className="ml-auto text-lg font-semibold tabular-nums">{fmtCredits(s.wallet.credits)} credits</span>
                 <span className="text-muted tabular-nums">({usd(s.wallet.credits)})</span>
               </div>
-              <p className="text-muted">1 credit = $0.01. Credits never expire. Plan fees, extra storage and share-link downloads past your allowance come out of here.</p>
+              {s.wallet.shared ? (
+                <p className="text-muted">
+                  One balance for everything Bazzy: the same credits rent and buy films on Bazzy TV, get you into Bazzy Live concerts and pay for BazzyBox. 1 credit = $0.01, and credits never expire.
+                  {s.wallet.manageUrl && (
+                    <>
+                      {' '}
+                      <a className="underline" href={s.wallet.manageUrl} target="_blank" rel="noreferrer">See every charge on Bazzy TV</a>.
+                    </>
+                  )}
+                </p>
+              ) : (
+                <p className="text-muted">1 credit = $0.01. Credits never expire. Plan fees, extra storage and share-link downloads past your allowance come out of here. Sign in with Bazzy TV to use one wallet for films, Live and Box.</p>
+              )}
               {s.payments === 'none' ? (
                 <p className="text-amber-500">Payments aren't set up on this server yet.</p>
               ) : (

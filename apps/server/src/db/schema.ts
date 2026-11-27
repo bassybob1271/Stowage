@@ -95,6 +95,56 @@ export const sqliteAccountLinks = s.sqliteTable('account_links', {
   createdAt: s.text('created_at').notNull(),
 });
 
+/**
+ * Box's side of the shared Bazzy wallet: each push of whole credits to Bazzy TV. `id` is the idempotency
+ * ref Bazzy TV sees, so a pending row retried after a crash or timeout is applied there once.
+ * state: pending | done | refused (Bazzy TV balance too low; the amount stays owed in accounts.wallet_mc).
+ */
+export const sqliteSettlements = s.sqliteTable('wallet_settlements', {
+  id: s.text('id').primaryKey(),
+  accountId: s.text('account_id').notNull(),
+  mc: s.integer('mc').notNull(),
+  note: s.text('note').notNull(),
+  state: s.text('state').notNull(),
+  createdAt: s.text('created_at').notNull(),
+});
+
+/** Import from Dropbox (and later others): a member's connection, encrypted, and their import jobs. */
+export const sqliteImportSources = s.sqliteTable('import_sources', {
+  id: s.text('id').primaryKey(), // `${accountId}:${provider}`
+  accountId: s.text('account_id').notNull(),
+  provider: s.text('provider').notNull(),
+  tokenEnc: s.text('token_enc').notNull(),
+  label: s.text('label'),
+  createdAt: s.text('created_at').notNull(),
+});
+export const sqliteImportJobs = s.sqliteTable('import_jobs', {
+  id: s.text('id').primaryKey(),
+  accountId: s.text('account_id').notNull(),
+  provider: s.text('provider').notNull(),
+  sources: s.text('sources').notNull(), // JSON array of the folders/files picked
+  dest: s.text('dest').notNull(),
+  state: s.text('state').notNull(), // scanning | running | paused | done | failed | canceled
+  totalFiles: s.integer('total_files').notNull().default(0),
+  totalBytes: s.integer('total_bytes').notNull().default(0),
+  doneFiles: s.integer('done_files').notNull().default(0),
+  doneBytes: s.integer('done_bytes').notNull().default(0),
+  failedFiles: s.integer('failed_files').notNull().default(0),
+  error: s.text('error'),
+  createdAt: s.text('created_at').notNull(),
+  updatedAt: s.text('updated_at').notNull(),
+});
+export const sqliteImportItems = s.sqliteTable('import_items', {
+  id: s.text('id').primaryKey(),
+  jobId: s.text('job_id').notNull(),
+  src: s.text('src').notNull(), // provider file id
+  dest: s.text('dest').notNull(),
+  size: s.integer('size').notNull(),
+  state: s.text('state').notNull(), // pending | done | skipped | failed
+  tries: s.integer('tries').notNull().default(0),
+  error: s.text('error'),
+});
+
 export const sqlitePlaylists = s.sqliteTable('playlists', {
   id: s.text('id').primaryKey(),
   accountId: s.text('account_id').notNull(),
@@ -109,6 +159,32 @@ export const sqlitePlaylists = s.sqliteTable('playlists', {
   plays: s.integer('plays').notNull().default(0),
   createdAt: s.text('created_at').notNull(),
   updatedAt: s.text('updated_at').notNull(),
+});
+
+export const sqliteComments = s.sqliteTable('comments', {
+  id: s.text('id').primaryKey(),
+  mountId: s.text('mount_id').notNull(),
+  path: s.text('path').notNull(),
+  /** Reply to another comment (one level deep). */
+  parentId: s.text('parent_id'),
+  /** Session subject (BazzyBox account id or 'owner'); null for a guest on a review link. */
+  authorId: s.text('author_id'),
+  authorName: s.text('author_name').notNull(),
+  body: s.text('body').notNull(),
+  /** Position in the media, milliseconds; null = about the whole file. */
+  tMs: s.integer('t_ms'),
+  tEndMs: s.integer('t_end_ms'),
+  resolvedAt: s.text('resolved_at'),
+  createdAt: s.text('created_at').notNull(),
+  updatedAt: s.text('updated_at').notNull(),
+});
+/** Review links: a guest can play one file and leave timed comments. */
+export const sqliteReviewLinks = s.sqliteTable('review_links', {
+  token: s.text('token').primaryKey(),
+  accountId: s.text('account_id').notNull(),
+  path: s.text('path').notNull(),
+  expiresAt: s.text('expires_at').notNull(),
+  createdAt: s.text('created_at').notNull(),
 });
 
 // ---------- Postgres ----------
@@ -197,6 +273,51 @@ export const pgAccountLinks = p.pgTable('account_links', {
   createdAt: p.text('created_at').notNull(),
 });
 
+export const pgSettlements = p.pgTable('wallet_settlements', {
+  id: p.text('id').primaryKey(),
+  accountId: p.text('account_id').notNull(),
+  mc: p.bigint('mc', { mode: 'number' }).notNull(),
+  note: p.text('note').notNull(),
+  state: p.text('state').notNull(),
+  createdAt: p.text('created_at').notNull(),
+});
+
+/** Import from Dropbox (and later others): a member's connection, encrypted, and their import jobs. */
+export const pgImportSources = p.pgTable('import_sources', {
+  id: p.text('id').primaryKey(), // `${accountId}:${provider}`
+  accountId: p.text('account_id').notNull(),
+  provider: p.text('provider').notNull(),
+  tokenEnc: p.text('token_enc').notNull(),
+  label: p.text('label'),
+  createdAt: p.text('created_at').notNull(),
+});
+export const pgImportJobs = p.pgTable('import_jobs', {
+  id: p.text('id').primaryKey(),
+  accountId: p.text('account_id').notNull(),
+  provider: p.text('provider').notNull(),
+  sources: p.text('sources').notNull(), // JSON array of the folders/files picked
+  dest: p.text('dest').notNull(),
+  state: p.text('state').notNull(), // scanning | running | paused | done | failed | canceled
+  totalFiles: p.integer('total_files').notNull().default(0),
+  totalBytes: p.bigint('total_bytes', { mode: 'number' }).notNull().default(0),
+  doneFiles: p.integer('done_files').notNull().default(0),
+  doneBytes: p.bigint('done_bytes', { mode: 'number' }).notNull().default(0),
+  failedFiles: p.integer('failed_files').notNull().default(0),
+  error: p.text('error'),
+  createdAt: p.text('created_at').notNull(),
+  updatedAt: p.text('updated_at').notNull(),
+});
+export const pgImportItems = p.pgTable('import_items', {
+  id: p.text('id').primaryKey(),
+  jobId: p.text('job_id').notNull(),
+  src: p.text('src').notNull(), // provider file id
+  dest: p.text('dest').notNull(),
+  size: p.bigint('size', { mode: 'number' }).notNull(),
+  state: p.text('state').notNull(), // pending | done | skipped | failed
+  tries: p.integer('tries').notNull().default(0),
+  error: p.text('error'),
+});
+
 export const pgPlaylists = p.pgTable('playlists', {
   id: p.text('id').primaryKey(),
   accountId: p.text('account_id').notNull(),
@@ -212,6 +333,28 @@ export const pgPlaylists = p.pgTable('playlists', {
 });
 
 /** Idempotent DDL. Kept as plain SQL so boot needs no migration tool. */
+export const pgComments = p.pgTable('comments', {
+  id: p.text('id').primaryKey(),
+  mountId: p.text('mount_id').notNull(),
+  path: p.text('path').notNull(),
+  parentId: p.text('parent_id'),
+  authorId: p.text('author_id'),
+  authorName: p.text('author_name').notNull(),
+  body: p.text('body').notNull(),
+  tMs: p.bigint('t_ms', { mode: 'number' }),
+  tEndMs: p.bigint('t_end_ms', { mode: 'number' }),
+  resolvedAt: p.text('resolved_at'),
+  createdAt: p.text('created_at').notNull(),
+  updatedAt: p.text('updated_at').notNull(),
+});
+export const pgReviewLinks = p.pgTable('review_links', {
+  token: p.text('token').primaryKey(),
+  accountId: p.text('account_id').notNull(),
+  path: p.text('path').notNull(),
+  expiresAt: p.text('expires_at').notNull(),
+  createdAt: p.text('created_at').notNull(),
+});
+
 export function ddl(dialect: 'sqlite' | 'pg'): string[] {
   const big = dialect === 'pg' ? 'BIGINT' : 'INTEGER';
   const bool = dialect === 'pg' ? 'BOOLEAN' : 'INTEGER';
@@ -241,9 +384,30 @@ export function ddl(dialect: 'sqlite' | 'pg'): string[] {
     `CREATE TABLE IF NOT EXISTS account_links (
       id TEXT PRIMARY KEY, provider TEXT NOT NULL, subject TEXT NOT NULL, account_id TEXT NOT NULL, created_at TEXT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS account_links_account ON account_links (account_id)`,
+    `CREATE TABLE IF NOT EXISTS wallet_settlements (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, mc ${big} NOT NULL, note TEXT NOT NULL, state TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS wallet_settlements_open ON wallet_settlements (account_id, state)`,
+    `CREATE TABLE IF NOT EXISTS import_sources (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, provider TEXT NOT NULL, token_enc TEXT NOT NULL, label TEXT, created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS import_jobs (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, provider TEXT NOT NULL, sources TEXT NOT NULL, dest TEXT NOT NULL, state TEXT NOT NULL,
+      total_files INTEGER NOT NULL DEFAULT 0, total_bytes ${big} NOT NULL DEFAULT 0, done_files INTEGER NOT NULL DEFAULT 0,
+      done_bytes ${big} NOT NULL DEFAULT 0, failed_files INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS import_jobs_account ON import_jobs (account_id, created_at)`,
+    `CREATE TABLE IF NOT EXISTS import_items (
+      id TEXT PRIMARY KEY, job_id TEXT NOT NULL, src TEXT NOT NULL, dest TEXT NOT NULL, size ${big} NOT NULL, state TEXT NOT NULL,
+      tries INTEGER NOT NULL DEFAULT 0, error TEXT)`,
+    `CREATE INDEX IF NOT EXISTS import_items_job ON import_items (job_id, state)`,
     `CREATE TABLE IF NOT EXISTS playlists (
       id TEXT PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, items TEXT NOT NULL,
       cover TEXT, cover_type TEXT, share_token TEXT UNIQUE, plays ${big} NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS playlists_account ON playlists (account_id, updated_at)`,
+    `CREATE TABLE IF NOT EXISTS comments (
+      id TEXT PRIMARY KEY, mount_id TEXT NOT NULL, path TEXT NOT NULL, parent_id TEXT, author_id TEXT, author_name TEXT NOT NULL,
+      body TEXT NOT NULL, t_ms ${big}, t_end_ms ${big}, resolved_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS comments_file ON comments (mount_id, path)`,
+    `CREATE TABLE IF NOT EXISTS review_links (
+      token TEXT PRIMARY KEY, account_id TEXT NOT NULL, path TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS review_links_account ON review_links (account_id)`,
   ];
 }

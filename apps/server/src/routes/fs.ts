@@ -7,6 +7,7 @@ import { NotFoundError, toNode, toWeb, type EmulatedAdapter } from '@stowage/sto
 import { resolveMount, type AppContext } from '../app.js';
 import { accountIdOf } from '../box/service.js';
 import { indexListing, unindex } from '../db/index.js';
+import { dropComments, moveComments } from '../comments.js';
 import { serveFile, isActiveContent, contentDisposition } from '../serve.js';
 import { signToken } from '../crypto.js';
 import { thumbnail } from '../thumbs.js';
@@ -217,6 +218,7 @@ export function fsRoutes(ctx: AppContext) {
     if (await a.stat(to)) throw new HttpError(409, 'destination exists');
     await a.move(from, to);
     await unindex(ctx.db, a.id, normalizePath(from));
+    await moveComments(ctx.db, a.id, normalizePath(from), normalizePath(to));
     return c.json({ ok: true });
   });
 
@@ -226,6 +228,7 @@ export function fsRoutes(ctx: AppContext) {
     if (!path) throw new PathError('refusing to delete mount root');
     await a.delete(path);
     await unindex(ctx.db, a.id, path);
+    await dropComments(ctx.db, a.id, path);
     touched(c);
     return c.json({ ok: true });
   });

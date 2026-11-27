@@ -26,7 +26,7 @@ const schema = z.object({
   LIVE_PUBLIC_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)),
   LIVE_TITLE: z.string().default('Live'),
   /** BazzyBox storage site linked from the header. Empty hides the link. */
-  LIVE_BOX_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://box.bazzy.io'),
+  LIVE_BOX_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://box.bazzy.tv'),
   LIVE_TRUST_PROXY: bool.default('true'),
 });
 

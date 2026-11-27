@@ -11,6 +11,7 @@ import { escapeLike } from './db/index.js';
 import type { MountRegistry } from './mounts.js';
 import { CodeGateProvider, LoginLimiter, Sessions, clientIp, logFailedLogin, type AuthProvider } from './auth.js';
 import { fsRoutes } from './routes/fs.js';
+import { commentRoutes, reviewOwnerRoutes, reviewPublicRoutes } from './comments.js';
 import { createTus } from './tus.js';
 import { serveFile } from './serve.js';
 import { verifyToken } from './crypto.js';
@@ -19,7 +20,8 @@ import type { Mount } from './mounts.js';
 import { BoxService, accountIdOf, accountIdOfMount, userMountId } from './box/service.js';
 import { boxPublicRoutes, boxRoutes, shareRoute } from './box/routes.js';
 import { SITE_CSP, siteHtml, siteJs } from './box/site.js';
-import { bazzyEnabled, bazzyRoutes } from './box/bazzy.js';
+import { bazzyEnabled, bazzyRoutes, setMemberMarker } from './box/bazzy.js';
+import { Importer } from './box/importer.js';
 import { playlistRoutes, publicPlaylistRoutes } from './box/playlists.js';
 
 export interface AppContext {
@@ -31,6 +33,7 @@ export interface AppContext {
   limiter: LoginLimiter;
   /** Present when BAZZYBOX=true: accounts, per-user storage, plans and credits. */
   box?: BoxService;
+  importer?: Importer;
 }
 
 /** Header the server sets on tus requests to carry the session subject. Client copies are stripped. */
@@ -61,6 +64,7 @@ export async function createContext(cfg: Config, db: Db, mounts: MountRegistry):
     sessions: new Sessions(cfg),
     limiter: new LoginLimiter(5),
     box,
+    importer: box ? new Importer(cfg, db, box) : undefined,
   };
 }
 
@@ -148,6 +152,7 @@ export function createApp(ctx: AppContext) {
 
   app.post('/api/auth/logout', (c) => {
     ctx.sessions.clear(c);
+    if (ctx.box) setMemberMarker(c, cfg, false);
     return c.json({ ok: true });
   });
 
@@ -166,6 +171,7 @@ export function createApp(ctx: AppContext) {
     app.route('/api', boxPublicRoutes(ctx, ctx.box));
     if (bazzyEnabled(cfg)) app.route('/api', bazzyRoutes(ctx, ctx.box));
     app.route('/', publicPlaylistRoutes(ctx, ctx.box));
+    app.route('/', reviewPublicRoutes(ctx, ctx.box));
     app.on(['GET', 'HEAD'], '/s/:token/:name?', shareRoute(ctx, ctx.box));
   }
 
@@ -243,8 +249,10 @@ export function createApp(ctx: AppContext) {
   });
 
   app.route('/api/fs', fsRoutes(ctx));
+  app.route('/api/comments', commentRoutes(ctx));
   if (ctx.box) {
     app.route('/api/box/playlists', playlistRoutes(ctx, ctx.box));
+    app.route('/api/box/reviews', reviewOwnerRoutes(ctx, ctx.box));
     app.route('/api/box', boxRoutes(ctx, ctx.box));
   }
 
@@ -266,6 +274,8 @@ export function createApp(ctx: AppContext) {
   // ---------- BazzyBox public website ----------
   // Visitors without a session get the marketing site at "/"; signed-in users fall through to the app.
   if (ctx.box) {
+    // New members sign up once, on Bazzy TV, and come back here signed in.
+    if (bazzyEnabled(cfg)) app.get('/signup', (c) => c.redirect('/api/auth/bazzy/start?signup=1', 302));
     const site = siteHtml({ freeGb: cfg.BOX_FREE_GB, tvUrl: cfg.BAZZY_TV_URL, signupOpen: cfg.BOX_SIGNUP === 'open' });
     app.get('/', async (c, next) => {
       if (await ctx.sessions.read(c)) return next();

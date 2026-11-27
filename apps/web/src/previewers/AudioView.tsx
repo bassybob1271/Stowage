@@ -6,6 +6,7 @@ import { useStore } from '../lib/store';
 import { formatDuration } from '../lib/format';
 import { enqueueTrack, player, playerStore, playFolder } from '../player';
 import type { PreviewProps } from './registry';
+import { CommentMarkers, CommentPanel, useTimedComments } from '../components/Comments';
 
 const AUDIO_RE = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac|weba)$/i;
 const WAVEFORM_MAX = 60 * 1024 * 1024;
@@ -67,6 +68,13 @@ export default function AudioView({ mount, file, url, siblings }: PreviewProps) 
 
   const time = isCurrent ? s.time : 0;
   const duration = isCurrent ? s.duration : 0;
+  const comments = useTimedComments(mount.id, file.path);
+  const [picked, setPicked] = useState<string | null>(null);
+  const seekTo = (t: number) => {
+    if (!isCurrent) return;
+    player.seek(t);
+    if (!playerStore.get().playing) player.toggle();
+  };
 
   return (
     <div className="h-full overflow-y-auto">
@@ -92,6 +100,9 @@ export default function AudioView({ mount, file, url, siblings }: PreviewProps) 
             <span>{formatDuration(time)}</span>
             <span>{formatDuration(duration)}</span>
           </div>
+          <div className="mt-2">
+            <CommentMarkers comments={comments.data ?? []} duration={duration} time={time} onSeek={seekTo} onPick={(c) => setPicked(c.id)} />
+          </div>
         </div>
         <div className="flex items-center gap-2" data-keys>
           <button className={`btn btn-icon hover:!bg-white/10 ${s.shuffle ? 'text-sky-400' : ''}`} aria-pressed={s.shuffle} aria-label="Shuffle" onClick={player.toggleShuffle}><Shuffle size={18} /></button>
@@ -105,6 +116,16 @@ export default function AudioView({ mount, file, url, siblings }: PreviewProps) 
           </button>
           <button className="btn btn-icon hover:!bg-white/10" aria-label="Add to queue" title="Add to queue" onClick={() => enqueueTrack({ mount: mount.id, path: file.path, name: file.name })}><ListPlus size={18} /></button>
         </div>
+        <CommentPanel
+          className="w-full max-h-[28rem]"
+          mount={mount.id}
+          path={file.path}
+          comments={comments.data ?? []}
+          getTime={() => (isCurrent ? playerStore.get().time : 0)}
+          time={time}
+          onSeek={seekTo}
+          highlight={picked}
+        />
         {s.queue.length > 1 && (
           <ol className="w-full text-sm divide-y divide-white/5">
             {s.queue.map((t, i) => (

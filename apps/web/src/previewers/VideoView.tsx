@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { PictureInPicture2 } from 'lucide-react';
+import { MessageSquare, PictureInPicture2 } from 'lucide-react';
 import { fileUrl } from '../api';
 import { ext } from '../lib/format';
 import { audio } from '../player';
 import type { PreviewProps } from './registry';
+import { CommentMarkers, CommentPanel, useTimedComments } from '../components/Comments';
 
 /** SRT → WebVTT (timestamps use '.' and a header). */
 export function srtToVtt(srt: string) {
@@ -17,6 +18,18 @@ export default function VideoView({ mount, file, url, siblings }: PreviewProps) 
   const [tracks, setTracks] = useState<{ label: string; src: string; lang: string }[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const isHls = ext(file.name) === 'm3u8';
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [showComments, setShowComments] = useState(true);
+  const comments = useTimedComments(mount.id, file.path);
+  const seekTo = (t: number) => {
+    const v = ref.current;
+    if (!v) return;
+    v.currentTime = t;
+    void v.play().catch(() => {});
+  };
+  const count = (comments.data ?? []).filter((c) => !c.parentId && !c.resolved).length;
 
   // Pause the global audio player while a video plays.
   useEffect(() => {
@@ -71,7 +84,8 @@ export default function VideoView({ mount, file, url, siblings }: PreviewProps) 
   }, [rate]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col lg:flex-row min-h-0">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
       <div className="flex-1 min-h-0 grid place-items-center bg-black">
         {err ? (
           <p className="text-sm text-red-400">{err}</p>
@@ -84,11 +98,17 @@ export default function VideoView({ mount, file, url, siblings }: PreviewProps) 
             preload="metadata"
             crossOrigin="use-credentials"
             className="max-w-full max-h-full"
+            onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+            onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+            onDurationChange={(e) => setDuration(e.currentTarget.duration)}
             onError={() => setErr('The browser could not play this video (codec not supported?). Try downloading it.')}
           >
             {tracks.map((t, i) => <track key={t.src} kind="subtitles" src={t.src} label={t.label} srcLang={t.lang} default={i === 0} />)}
           </video>
         )}
+      </div>
+      <div className="shrink-0 px-3 pt-2" data-keys>
+        <CommentMarkers comments={comments.data ?? []} duration={duration} time={time} onSeek={seekTo} onPick={(c) => (setPicked(c.id), setShowComments(true))} />
       </div>
       <div className="shrink-0 flex items-center justify-center gap-2 py-2 text-sm" data-keys>
         <label className="flex items-center gap-1 text-neutral-400">
@@ -102,7 +122,23 @@ export default function VideoView({ mount, file, url, siblings }: PreviewProps) 
             <PictureInPicture2 size={16} /> Picture-in-picture
           </button>
         )}
+        <button className="btn hover:!bg-white/10" aria-pressed={showComments} onClick={() => setShowComments((v) => !v)}>
+          <MessageSquare size={16} /> Comments{count ? ` (${count})` : ''}
+        </button>
       </div>
+      </div>
+      {showComments && (
+        <CommentPanel
+          className="shrink-0 m-2 lg:w-96 max-h-[45vh] lg:max-h-none"
+          mount={mount.id}
+          path={file.path}
+          comments={comments.data ?? []}
+          getTime={() => ref.current?.currentTime ?? 0}
+          time={time}
+          onSeek={seekTo}
+          highlight={picked}
+        />
+      )}
     </div>
   );
 }

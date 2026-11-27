@@ -49,11 +49,56 @@ export interface BoxSummary {
   account: { id: string; email: string; createdAt: string };
   plan: { id: BoxPlanId; label: string; priceCredits: number; includedBytes: number; periodEnd: number | null; overageCreditsPerTbMonth: number | null };
   usage: { usedBytes: number; allowedBytes: number; measuredAt: number | null; sendBytes: number; sendFreeBytes: number };
-  wallet: { credits: number; dailyChargeCredits: number };
+  wallet: { credits: number; dailyChargeCredits: number; shared?: boolean; manageUrl?: string | null };
   plans: BoxPlan[];
   packs: Record<string, { usdCents: number; credits: number }>;
   payments: 'stripe' | 'dev' | 'none';
   history: { at: string; credits: number; kind: string; note: string }[];
+}
+
+export interface TimedComment {
+  id: string;
+  parentId: string | null;
+  author: string;
+  guest: boolean;
+  mine: boolean;
+  body: string;
+  /** Seconds into the media; null = about the whole file. */
+  t: number | null;
+  tEnd: number | null;
+  resolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DropboxEntry {
+  name: string;
+  path: string;
+  folder: boolean;
+  size: number;
+}
+
+export type ImportState = 'scanning' | 'running' | 'paused' | 'done' | 'failed' | 'canceled';
+
+export interface ImportJob {
+  id: string;
+  provider: string;
+  sources: string[];
+  dest: string;
+  state: ImportState;
+  totalFiles: number;
+  totalBytes: number;
+  doneFiles: number;
+  doneBytes: number;
+  failedFiles: number;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ImportStatus {
+  dropbox: { available: boolean; connected: boolean; label?: string | null };
+  jobs: ImportJob[];
 }
 
 export interface BoxShare {
@@ -96,7 +141,23 @@ export const api = {
   session: () => call<Session>('/api/auth/session'),
   boxSignup: (email: string, password: string) => call<{ ok: true }>('/api/auth/box/signup', { method: 'POST', body: JSON.stringify({ email, password }) }),
   boxLogin: (email: string, password: string) => call<{ ok: true }>('/api/auth/box/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  comments: {
+    list: (mount: string, path: string) => call<{ comments: TimedComment[] }>(`/api/comments/${enc(mount)}?path=${enc(path)}`),
+    add: (mount: string, path: string, c: { body: string; t?: number | null; tEnd?: number | null; parentId?: string | null }) =>
+      call<TimedComment>(`/api/comments/${enc(mount)}`, { method: 'POST', body: JSON.stringify({ path, ...c }) }),
+    update: (mount: string, id: string, patch: { body?: string; resolved?: boolean }) =>
+      call<TimedComment>(`/api/comments/${enc(mount)}/${enc(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+    remove: (mount: string, id: string) => call(`/api/comments/${enc(mount)}/${enc(id)}`, { method: 'DELETE' }),
+  },
   box: {
+    review: (path: string, days = 14) => call<{ url: string; expiresAt: string }>('/api/box/reviews', { method: 'POST', body: JSON.stringify({ path, days }) }),
+    importer: {
+      status: () => call<ImportStatus>('/api/box/import'),
+      list: (path = '') => call<{ entries: DropboxEntry[] }>(`/api/box/import/dropbox/list?path=${enc(path)}`),
+      start: (paths: string[]) => call<ImportJob>('/api/box/import/jobs', { method: 'POST', body: JSON.stringify({ paths }) }),
+      act: (id: string, action: 'pause' | 'resume' | 'cancel') => call<ImportJob>(`/api/box/import/jobs/${enc(id)}/${action}`, { method: 'POST' }),
+      disconnect: () => call('/api/box/import/dropbox', { method: 'DELETE' }),
+    },
     me: () => call<BoxSummary>('/api/box/me'),
     refreshUsage: () => call<BoxSummary>('/api/box/usage/refresh', { method: 'POST' }),
     setPlan: (plan: BoxPlanId) => call<BoxSummary>('/api/box/plan', { method: 'POST', body: JSON.stringify({ plan }) }),

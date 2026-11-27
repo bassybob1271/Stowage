@@ -44,7 +44,7 @@ const schema = z.object({
   /** open = anyone can sign up; closed = only existing accounts. */
   BOX_SIGNUP: z.enum(['open', 'closed']).default('open'),
   /** Bazzy TV video site, linked from the BazzyBox website. Empty hides the link. */
-  BAZZY_TV_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://live.bazzy.io'),
+  BAZZY_TV_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://video.bazzy.tv'),
   /**
    * "Sign in with Bazzy TV": the Bazzy TV website (bazzy-video) is the login provider.
    * Register BazzyBox in Bazzy TV's OAUTH_CLIENTS with redirect URI {APP_ORIGIN}/api/auth/bazzy/callback.
@@ -56,6 +56,16 @@ const schema = z.object({
   BOX_DEV_CREDITS: bool.default('false'),
   STRIPE_SECRET_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
   STRIPE_WEBHOOK_SECRET: z.string().optional().or(z.literal('').transform(() => undefined)),
+  /**
+   * Import from Dropbox. Create an app at dropbox.com/developers (scoped access, Full Dropbox,
+   * permissions files.metadata.read + files.content.read) with redirect URI
+   * {APP_ORIGIN}/api/box/import/dropbox/callback. Empty hides the Dropbox import button.
+   */
+  DROPBOX_APP_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
+  DROPBOX_APP_SECRET: z.string().optional().or(z.literal('').transform(() => undefined)),
+  /** Files copied at once across all imports, and how often the import worker looks for work. */
+  IMPORT_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
+  IMPORT_INTERVAL_SEC: z.coerce.number().int().nonnegative().default(5),
   /** How often the storage meter and plan renewals run. */
   BOX_METER_INTERVAL_SEC: z.coerce.number().int().nonnegative().default(3600),
 });

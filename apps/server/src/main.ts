@@ -49,6 +49,9 @@ async function reconcile() {
 /** BazzyBox: daily storage meter, plan renewals, monthly send allowance resets. */
 const meterTimer =
   ctx.box && cfg.BOX_METER_INTERVAL_SEC > 0 ? setInterval(() => void ctx.box!.meterAll(), cfg.BOX_METER_INTERVAL_SEC * 1000) : undefined;
+/** BazzyBox: Dropbox imports (IMPORT_INTERVAL_SEC=0 leaves the copying to another server). */
+const importTimer =
+  ctx.importer && cfg.IMPORT_INTERVAL_SEC > 0 ? setInterval(() => void ctx.importer!.tick().catch(() => {}), cfg.IMPORT_INTERVAL_SEC * 1000) : undefined;
 if (ctx.box) log.info('box.enabled', { mount: cfg.BOX_MOUNT, payments: cfg.STRIPE_SECRET_KEY ? 'stripe' : cfg.BOX_DEV_CREDITS ? 'dev' : 'none' });
 
 const reconcileTimer =
@@ -59,6 +62,7 @@ async function shutdown(sig: string) {
   clearInterval(sweep);
   if (reconcileTimer) clearInterval(reconcileTimer);
   if (meterTimer) clearInterval(meterTimer);
+  if (importTimer) clearInterval(importTimer);
   server.close();
   await mounts.closeAll();
   await db.close();

@@ -30,6 +30,7 @@ const cfg = loadConfig({
 } as NodeJS.ProcessEnv);
 
 let app: ReturnType<typeof createApp>;
+let ctx: Awaited<ReturnType<typeof createContext>>;
 const json = { 'content-type': 'application/json' };
 
 /** A fake Bazzy TV: issues a code for whoever `nextUser` is, and checks client auth + PKCE like the real one. */
@@ -53,8 +54,29 @@ bazzyHttp.fetch = async (url: string, init?: RequestInit) => {
     const sub = new Headers(init?.headers).get('authorization')?.replace('Bearer at-', '');
     return sub === nextUser.sub ? Response.json(nextUser) : Response.json({ error: 'invalid_token' }, { status: 401 });
   }
+  const w = url.match(/^https:\/\/video\.test\/api\/v1\/apps\/wallet\/([^/]+)(\/entries)?$/);
+  if (w) {
+    if (walletDown) throw new TypeError('fetch failed');
+    if (new Headers(init?.headers).get('authorization') !== `Basic ${Buffer.from('bazzybox:box-secret').toString('base64')}`) return Response.json({}, { status: 401 });
+    const sub = decodeURIComponent(w[1]!);
+    if (!w[2]) return Response.json({ credits: tvWallet.get(sub) ?? 0 });
+    const e = JSON.parse(init!.body as string) as { credits: number; ref: string; note: string };
+    if (tvRefs.has(e.ref)) return Response.json({ applied: false, accepted: true, credits: tvWallet.get(sub) ?? 0 });
+    const bal = tvWallet.get(sub) ?? 0;
+    if (bal + e.credits < 0) return Response.json({ detail: { error: 'insufficient credits', credits: bal } }, { status: 402 });
+    tvRefs.add(e.ref);
+    tvWallet.set(sub, bal + e.credits);
+    tvStatement.push({ sub, credits: e.credits, note: e.note });
+    return Response.json({ applied: true, accepted: true, credits: bal + e.credits });
+  }
   throw new Error(`unexpected fetch ${url}`);
 };
+
+/** The fake Bazzy TV's shared wallet: whole credits per member, refs applied once. */
+const tvWallet = new Map<string, number>();
+const tvRefs = new Set<string>();
+const tvStatement: { sub: string; credits: number; note: string }[] = [];
+let walletDown = false;
 
 /** Runs the browser side: start → (Bazzy TV approves) → callback. Returns the callback response. */
 async function signIn(opts: { tamperState?: boolean } = {}) {
@@ -72,6 +94,9 @@ async function signIn(opts: { tamperState?: boolean } = {}) {
   const state = opts.tamperState ? 'forged' : q.get('state')!;
   return app.request(`/api/auth/bazzy/callback?code=${code}&state=${encodeURIComponent(state)}`, { headers: { cookie } });
 }
+/** A BazzyBox password account from before sign-up moved to Bazzy TV. */
+const legacyAccount = (email: string) => ctx.box!['createAccount'](email, 'correct horse battery');
+
 const sessionOf = (r: Response) => r.headers.getSetCookie().find((c) => !c.startsWith('bz_bazzy'))!.split(';')[0]!;
 
 beforeAll(async () => {
@@ -79,7 +104,8 @@ beforeAll(async () => {
   const mounts = new MountRegistry(db, cfg.MASTER_KEY);
   await mounts.load(cfg.MOUNTS_FILE);
   await mounts.checkHealth(0);
-  app = createApp(await createContext(cfg, db, mounts));
+  ctx = await createContext(cfg, db, mounts);
+  app = createApp(ctx);
 });
 
 describe('Sign in with Bazzy TV', () => {
@@ -105,8 +131,9 @@ describe('Sign in with Bazzy TV', () => {
   });
 
   it('links a verified Bazzy email to an existing password account', async () => {
-    const su = await app.request('/api/auth/box/signup', { method: 'POST', headers: json, body: JSON.stringify({ email: 'pw@example.com', password: 'correct horse battery' }) });
-    expect(su.status).toBe(201);
+    await legacyAccount('pw@example.com');
+    const su = await app.request('/api/auth/box/login', { method: 'POST', headers: json, body: JSON.stringify({ email: 'pw@example.com', password: 'correct horse battery' }) });
+    expect(su.status).toBe(200);
     const pwMe = (await (await app.request('/api/box/me', { headers: { cookie: su.headers.get('set-cookie')!.split(';')[0]! } })).json()) as { account: { id: string } };
     nextUser = { sub: 'bz-2', email: 'pw@example.com', email_verified: true };
     const viaBazzy = (await (await app.request('/api/box/me', { headers: { cookie: sessionOf(await signIn()) } })).json()) as { account: { id: string } };
@@ -114,7 +141,7 @@ describe('Sign in with Bazzy TV', () => {
   });
 
   it('refuses an unverified Bazzy email that matches someone else’s account', async () => {
-    await app.request('/api/auth/box/signup', { method: 'POST', headers: json, body: JSON.stringify({ email: 'victim@example.com', password: 'correct horse battery' }) });
+    await legacyAccount('victim@example.com');
     nextUser = { sub: 'bz-attacker', email: 'victim@example.com', email_verified: false };
     const r = await signIn();
     expect(r.status).toBe(303);
@@ -132,5 +159,85 @@ describe('Sign in with Bazzy TV', () => {
   it('passes a cancelled consent back as a friendly error', async () => {
     const r = await app.request('/api/auth/bazzy/callback?error=access_denied&state=x');
     expect(decodeURIComponent(r.headers.get('location')!)).toContain('cancelled');
+  });
+});
+
+describe('one Bazzy TV account', () => {
+  it('sends new Box sign-ups to Bazzy TV instead of making a Box-only login', async () => {
+    const r = await app.request('/api/auth/box/signup', { method: 'POST', headers: json, body: JSON.stringify({ email: 'new@example.com', password: 'correct horse battery' }) });
+    expect(r.status).toBe(403);
+    expect(((await r.json()) as { error: string }).error).toMatch(/Bazzy TV/);
+    const page = await app.request('/signup');
+    expect(page.status).toBe(302);
+    expect(page.headers.get('location')).toBe('/api/auth/bazzy/start?signup=1');
+    const start = await app.request('/api/auth/bazzy/start?signup=1');
+    expect(new URL(start.headers.get('location')!).searchParams.get('screen')).toBe('signup');
+  });
+});
+
+describe('one Bazzy wallet', () => {
+  const me = async (cookie: string) => (await (await app.request('/api/box/me', { headers: { cookie } })).json()) as {
+    account: { id: string };
+    wallet: { credits: number; shared: boolean; manageUrl: string | null };
+    plan: { id: string };
+  };
+
+  it('shows the Bazzy TV balance in Box and pays for plans from it', async () => {
+    tvWallet.set('bz-w1', 1500);
+    nextUser = { sub: 'bz-w1', email: 'w1@example.com', email_verified: true };
+    const cookie = sessionOf(await signIn());
+    const before = await me(cookie);
+    expect(before.wallet).toMatchObject({ credits: 1500, shared: true, manageUrl: 'https://video.bazzy.tv/wallet' });
+    const up = await app.request('/api/box/plan', { method: 'POST', headers: { ...json, cookie, origin: 'https://box.test' }, body: JSON.stringify({ plan: 'flex' }) });
+    expect(up.status).toBe(200);
+    const after = await me(cookie);
+    expect(after.plan.id).toBe('flex');
+    expect(tvWallet.get('bz-w1')).toBe(1500 - 999);
+    expect(after.wallet.credits).toBe(1500 - 999);
+    expect(tvStatement.at(-1)).toMatchObject({ sub: 'bz-w1', credits: -999 });
+  });
+
+  it('moves an old Box-only balance into the Bazzy wallet on first Bazzy TV sign-in', async () => {
+    const a = await legacyAccount('legacy@example.com');
+    await ctx.box!.ledger(a.id, 250_000, 'topup', 'Bought 250 credits');
+    tvWallet.set('bz-legacy', 100);
+    nextUser = { sub: 'bz-legacy', email: 'legacy@example.com', email_verified: true };
+    const cookie = sessionOf(await signIn());
+    expect(tvWallet.get('bz-legacy')).toBe(350);
+    expect((await me(cookie)).wallet.credits).toBe(350);
+    expect((await ctx.box!.get(a.id)).walletMc).toBe(0);
+  });
+
+  it('carries fractions of a credit until they add up, and keeps a refused charge as owed', async () => {
+    tvWallet.set('bz-frac', 3);
+    nextUser = { sub: 'bz-frac', email: 'frac@example.com', email_verified: true };
+    const id = (await me(sessionOf(await signIn()))).account.id;
+    const box = ctx.box!;
+    await box.ledger(id, -1500, 'storage', 'extra storage × 1 day'); // 1 credit now, 0.5 carried
+    expect(tvWallet.get('bz-frac')).toBe(2);
+    expect((await box.get(id)).walletMc).toBe(-500);
+    await box.ledger(id, -600, 'storage', 'extra storage × 1 day'); // 1.1 owed → 1 now, 0.1 carried
+    expect(tvWallet.get('bz-frac')).toBe(1);
+    expect(await box.walletMcOf(await box.get(id))).toBe(900);
+    await box.ledger(id, -2000, 'send', 'Share-link download'); // more than the wallet holds: refused, owed
+    expect(tvWallet.get('bz-frac')).toBe(1);
+    expect(await box.walletMcOf(await box.get(id))).toBe(-1100);
+    tvWallet.set('bz-frac', 10); // member tops up on Bazzy TV; the next settle pays what's owed
+    await box.settle(id, 'catch up');
+    expect(tvWallet.get('bz-frac')).toBe(8);
+    expect(await box.walletMcOf(await box.get(id))).toBe(8000 - 100);
+  });
+
+  it('says plainly when the Bazzy wallet is unreachable', async () => {
+    nextUser = { sub: 'bz-down', email: 'down@example.com', email_verified: true };
+    const cookie = sessionOf(await signIn());
+    walletDown = true;
+    try {
+      const r = await app.request('/api/box/me', { headers: { cookie } });
+      expect(r.status).toBe(503);
+      expect(((await r.json()) as { error: string }).error).toMatch(/Bazzy wallet/);
+    } finally {
+      walletDown = false;
+    }
   });
 });
