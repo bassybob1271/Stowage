@@ -59,7 +59,7 @@ grep -q '^BAZZYBOX=true' .env || echo "  note: .env has no BAZZYBOX=true, so Baz
 
 say "Install and build"
 pnpm install --frozen-lockfile
-pnpm --filter @stowage/live fetch-bins
+pnpm --filter @stowage/live fetch-bins || { [ -x apps/live/bin/cloudflared ] && echo "  a download failed (rate limit?); keeping the tools already on this Mac"; }
 # "server..." also builds the shared + storage packages it imports.
 pnpm --filter @stowage/web build
 pnpm --filter "@stowage/server..." build
