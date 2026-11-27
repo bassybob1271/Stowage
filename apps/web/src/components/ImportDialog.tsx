@@ -135,6 +135,7 @@ function Progress({ job }: { job: ImportJob }) {
         />
       </div>
       {job.failedFiles > 0 && <p className="text-xs text-amber-500">{job.failedFiles} file(s) couldn’t be copied after 3 tries. They’re skipped; the rest keeps going.</p>}
+      {job.failedFiles > 0 && job.error && <p className="text-xs text-muted break-words">{job.error}</p>}
       <div className="flex gap-2">
         {job.state === 'running' && (
           <button className="btn" onClick={() => act.mutate('pause')}><Pause size={14} /> Pause</button>

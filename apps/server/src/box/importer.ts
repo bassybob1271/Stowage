@@ -270,7 +270,11 @@ export class Importer {
         .update(it)
         .set({ tries, state: gaveUp ? 'failed' : 'pending', error: (e as Error).message.slice(0, 300) })
         .where(eq(it.id, item.id));
-      if (gaveUp) await this.db.orm.update(j).set({ failedFiles: sql`${j.failedFiles} + 1`, updatedAt: this.iso() }).where(eq(j.id, item.jobId));
+      if (gaveUp)
+        await this.db.orm
+          .update(j)
+          .set({ failedFiles: sql`${j.failedFiles} + 1`, error: `Latest problem: ${(e as Error).message}`.slice(0, 500), updatedAt: this.iso() })
+          .where(eq(j.id, item.jobId));
       log.warn('box.import_file_failed', { job: item.jobId, tries, error: (e as Error).message });
     }
   }
