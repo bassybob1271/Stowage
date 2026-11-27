@@ -311,7 +311,7 @@ Text previews cap at 5 MB; media streams without a cap. Grid view shows server-g
 
 ↑/↓ (←/→ in grid) move · Shift extends · Enter opens · Space quick-look · Delete deletes · F2 renames · ⌘/Ctrl+A selects all · M mutes the music · ⇧N or ⌥⌘N new folder (⌘N too, where the browser allows) · Backspace goes up a folder · Esc clears.
 
-Drag files or a selection onto a folder, or onto a folder in the breadcrumb, to move them there. Drop files from your computer onto a folder to upload straight into it.
+Drag across empty space (or the empty part of list rows) to select several items; ⌘ or Shift adds to the selection. Drag files or a selection onto a folder, or onto a folder in the breadcrumb, to move them there. Drop files from your computer onto a folder to upload straight into it.
 
 ## Security notes
 

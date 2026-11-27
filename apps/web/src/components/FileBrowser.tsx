@@ -62,6 +62,11 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
   const [focus, setFocus] = useState<number>(-1);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  /** Drag-to-select box, in the pane's scrolled content coordinates. */
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const marqueeEnd = useRef(0);
+  /** A click right after a drag-select is the mouseup of that drag, not a click. */
+  const marqueeJustEnded = () => Date.now() - marqueeEnd.current < 250;
   /** Paths being dragged inside the app (dataTransfer can't be read during dragover). */
   const dragging = useRef<string[]>([]);
   /** Folder (path; '' = mount root) that something is being dragged over. */
@@ -325,6 +330,69 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
     }
   }
 
+  // ---------- drag to select ----------
+  function startMarquee(ev: RME<HTMLDivElement>) {
+    if (ev.button !== 0) return;
+    const t = ev.target as HTMLElement;
+    // Names and tiles move things; checkboxes, buttons, links and the column headers do their own thing.
+    if (t.closest('[data-drag-handle],input,button,a,select,thead,[role=dialog]')) return;
+    const el = pane.current;
+    if (!el) return;
+    const box = el.getBoundingClientRect();
+    if (ev.clientX > box.left + el.clientWidth) return; // the scrollbar
+    const add = ev.metaKey || ev.ctrlKey || ev.shiftKey;
+    const base = add ? new Set(selected) : new Set<string>();
+    const start = { x: ev.clientX - box.left + el.scrollLeft, y: ev.clientY - box.top + el.scrollTop };
+    let last = { x: ev.clientX, y: ev.clientY };
+    let active = false;
+    let raf = 0;
+    const update = () => {
+      const b = el.getBoundingClientRect();
+      const cur = { x: last.x - b.left + el.scrollLeft, y: last.y - b.top + el.scrollTop };
+      if (!active && Math.hypot(cur.x - start.x, cur.y - start.y) < 5) return;
+      if (!active) {
+        active = true;
+        el.focus({ preventScroll: true });
+        window.getSelection()?.removeAllRanges();
+      }
+      setMarquee({ x0: start.x, y0: start.y, x1: cur.x, y1: cur.y });
+      // Which rows/tiles the box touches, in screen coordinates.
+      const sx = start.x - el.scrollLeft + b.left, sy = start.y - el.scrollTop + b.top;
+      const L = Math.min(sx, last.x), R = Math.max(sx, last.x), T = Math.min(sy, last.y), B = Math.max(sy, last.y);
+      const next = new Set(base);
+      entries.forEach((e, i) => {
+        const r = document.getElementById(`row-${i}`)?.getBoundingClientRect();
+        if (r && r.right >= L && r.left <= R && r.bottom >= T && r.top <= B) next.add(e.path);
+      });
+      setSelected(next);
+    };
+    // Keep scrolling while the pointer sits past the top or bottom edge.
+    const tick = () => {
+      const b = el.getBoundingClientRect();
+      const dy = last.y < b.top + 24 ? -14 : last.y > b.bottom - 24 ? 14 : 0;
+      if (active && dy) {
+        el.scrollTop += dy;
+        update();
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    const move = (e: MouseEvent) => {
+      last = { x: e.clientX, y: e.clientY };
+      if (active) e.preventDefault();
+      update();
+    };
+    const up = () => {
+      removeEventListener('mousemove', move);
+      removeEventListener('mouseup', up);
+      cancelAnimationFrame(raf);
+      if (active) marqueeEnd.current = Date.now();
+      setMarquee(null);
+    };
+    addEventListener('mousemove', move);
+    addEventListener('mouseup', up);
+    raf = requestAnimationFrame(tick);
+  }
+
   // ---------- drag & drop ----------
   /** A folder can take these items unless it is one of them, inside one of them, or already their parent. */
   function canDropInto(paths: string[], dest: string) {
@@ -444,7 +512,8 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
         aria-label="Files"
         className={`flex-1 overflow-auto outline-none relative ${dragOver ? 'ring-2 ring-inset ring-accent' : ''}`}
         onKeyDown={onKey}
-        onClick={(e) => e.target === e.currentTarget && setSelected(new Set())}
+        onMouseDown={startMarquee}
+        onClick={(e) => !marqueeJustEnded() && e.target === e.currentTarget && setSelected(new Set())}
         onContextMenu={(e) => {
           e.preventDefault();
           setMenu({ x: e.clientX, y: e.clientY });
@@ -511,11 +580,8 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
                     id={`row-${i}`}
                     aria-selected={isSel}
                     className={`border-b border-line/50 cursor-default ${isSel ? 'bg-sel' : 'hover-row'} ${focus === i ? 'outline outline-1 -outline-offset-1 outline-[var(--color-accent)]' : ''} ${e.isDir && dropTarget === e.path ? 'bg-accent-soft outline outline-2 -outline-offset-2 outline-[var(--color-accent)]' : ''}`}
-                    draggable={!mount.readOnly}
-                    onDragStart={(ev) => startDrag(ev, e)}
-                    onDragEnd={() => ((dragging.current = []), setDropTarget(null))}
                     {...(e.isDir ? dropZone(e.path) : {})}
-                    onClick={(ev) => clickRow(ev, i)}
+                    onClick={(ev) => !marqueeJustEnded() && clickRow(ev, i)}
                     onDoubleClick={() => openEntry(e)}
                     onContextMenu={(ev) => {
                       ev.preventDefault();
@@ -529,7 +595,14 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
                       <input type="checkbox" aria-label={`Select ${e.name}`} checked={isSel} onChange={() => toggleCheck(i)} />
                     </td>
                     <td className="py-1.5 pr-3">
-                      <button className="flex items-center gap-2 min-w-0 text-left" onClick={(ev) => { ev.stopPropagation(); openEntry(e); }}>
+                      <button
+                        className="flex items-center gap-2 min-w-0 text-left"
+                        data-drag-handle
+                        draggable={!mount.readOnly}
+                        onDragStart={(ev) => startDrag(ev, e)}
+                        onDragEnd={() => ((dragging.current = []), setDropTarget(null))}
+                        onClick={(ev) => { ev.stopPropagation(); openEntry(e); }}
+                      >
                         <FileIcon entry={e} size={18} />
                         <span className="truncate">{e.name}</span>
                         {isStarred(starred, { mount: mount.id, path: e.path }) && <Star size={12} className="text-amber-500 fill-amber-500 shrink-0" />}
@@ -557,11 +630,12 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
                   role="option"
                   aria-selected={isSel}
                   className={`group rounded-lg p-2 flex flex-col gap-1.5 cursor-default relative ${isSel ? 'bg-sel' : 'hover-row'} ${focus === i ? 'outline outline-1 outline-[var(--color-accent)]' : ''} ${e.isDir && dropTarget === e.path ? 'bg-accent-soft outline outline-2 outline-[var(--color-accent)]' : ''}`}
+                  data-drag-handle
                   draggable={!mount.readOnly}
                   onDragStart={(ev) => startDrag(ev, e)}
                   onDragEnd={() => ((dragging.current = []), setDropTarget(null))}
                   {...(e.isDir ? dropZone(e.path) : {})}
-                  onClick={(ev) => clickRow(ev, i)}
+                  onClick={(ev) => !marqueeJustEnded() && clickRow(ev, i)}
                   onDoubleClick={() => openEntry(e)}
                   onContextMenu={(ev) => {
                     ev.preventDefault();
@@ -587,6 +661,13 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
               );
             })}
           </div>
+        )}
+        {marquee && (
+          <div
+            aria-hidden
+            className="absolute z-20 pointer-events-none rounded-sm border border-[var(--color-accent)] bg-[color-mix(in_oklab,var(--color-accent)_15%,transparent)]"
+            style={{ left: Math.min(marquee.x0, marquee.x1), top: Math.min(marquee.y0, marquee.y1), width: Math.abs(marquee.x1 - marquee.x0), height: Math.abs(marquee.y1 - marquee.y0) }}
+          />
         )}
       </div>
 
