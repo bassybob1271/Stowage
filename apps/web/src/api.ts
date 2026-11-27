@@ -56,6 +56,36 @@ export interface BoxSummary {
   history: { at: string; credits: number; kind: string; note: string }[];
 }
 
+export interface DropboxEntry {
+  name: string;
+  path: string;
+  folder: boolean;
+  size: number;
+}
+
+export type ImportState = 'scanning' | 'running' | 'paused' | 'done' | 'failed' | 'canceled';
+
+export interface ImportJob {
+  id: string;
+  provider: string;
+  sources: string[];
+  dest: string;
+  state: ImportState;
+  totalFiles: number;
+  totalBytes: number;
+  doneFiles: number;
+  doneBytes: number;
+  failedFiles: number;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ImportStatus {
+  dropbox: { available: boolean; connected: boolean; label?: string | null };
+  jobs: ImportJob[];
+}
+
 export interface BoxShare {
   token: string;
   path: string;
@@ -97,6 +127,13 @@ export const api = {
   boxSignup: (email: string, password: string) => call<{ ok: true }>('/api/auth/box/signup', { method: 'POST', body: JSON.stringify({ email, password }) }),
   boxLogin: (email: string, password: string) => call<{ ok: true }>('/api/auth/box/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   box: {
+    importer: {
+      status: () => call<ImportStatus>('/api/box/import'),
+      list: (path = '') => call<{ entries: DropboxEntry[] }>(`/api/box/import/dropbox/list?path=${enc(path)}`),
+      start: (paths: string[]) => call<ImportJob>('/api/box/import/jobs', { method: 'POST', body: JSON.stringify({ paths }) }),
+      act: (id: string, action: 'pause' | 'resume' | 'cancel') => call<ImportJob>(`/api/box/import/jobs/${enc(id)}/${action}`, { method: 'POST' }),
+      disconnect: () => call('/api/box/import/dropbox', { method: 'DELETE' }),
+    },
     me: () => call<BoxSummary>('/api/box/me'),
     refreshUsage: () => call<BoxSummary>('/api/box/usage/refresh', { method: 'POST' }),
     setPlan: (plan: BoxPlanId) => call<BoxSummary>('/api/box/plan', { method: 'POST', body: JSON.stringify({ plan }) }),

@@ -11,6 +11,9 @@ import { BoxError, accountIdOf, accountIdOfMount, userSub, type BoxService } fro
 import { PACKS, type PackId } from './pricing.js';
 import { createCheckout, verifyWebhook } from './stripe.js';
 import { setMemberMarker } from './bazzy.js';
+import { authorizeUrl, DropboxError, exchangeCode, newVerifier } from './dropbox.js';
+import { signToken, verifyToken } from '../crypto.js';
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 
 const credsSchema = z.object({
   email: z.string().email().max(254),
@@ -118,6 +121,96 @@ export function boxRoutes(ctx: AppContext, box: BoxService) {
   };
 
   app.get('/me', wrap(async (c) => c.json(await box.summary(me(c)))));
+
+  // ---------- Import from Dropbox ----------
+  const importer = ctx.importer!;
+  const DBX_COOKIE = 'bz_dbx';
+  const origin = (c: Context) => (ctx.cfg.APP_ORIGIN ?? new URL(c.req.url).origin).replace(/\/$/, '');
+  const dbxCallback = (c: Context) => `${origin(c)}/api/box/import/dropbox/callback`;
+
+  app.get(
+    '/import',
+    wrap(async (c) => c.json({ dropbox: { available: Boolean(importer.dropboxApp), ...(await importer.connected(me(c))) }, jobs: await importer.list(me(c)) })),
+  );
+
+  /** Sends the member to Dropbox to approve read-only access, then back to the callback. */
+  app.get(
+    '/import/dropbox/start',
+    wrap(async (c) => {
+      const id = me(c);
+      const dbx = importer.dropboxApp;
+      if (!dbx) throw new BoxError(503, 'Dropbox import is not set up on this server.');
+      const state = randomBytes(24).toString('base64url');
+      const verifier = newVerifier();
+      setCookie(c, DBX_COOKIE, signToken(ctx.cfg.SESSION_SECRET, { s: state, v: verifier, a: id, e: Date.now() + 600_000 }), {
+        httpOnly: true,
+        secure: origin(c).startsWith('https://'),
+        sameSite: 'Lax',
+        path: '/api/box/import/dropbox',
+        maxAge: 600,
+      });
+      return c.redirect(authorizeUrl(dbx, dbxCallback(c), state, verifier), 302);
+    }),
+  );
+
+  app.get('/import/dropbox/callback', async (c) => {
+    const back = (q: string) => {
+      deleteCookie(c, DBX_COOKIE, { path: '/api/box/import/dropbox' });
+      return c.redirect(`/?import=${q}`, 303);
+    };
+    try {
+      const id = me(c);
+      const dbx = importer.dropboxApp;
+      const p = verifyToken<{ s: string; v: string; a: string; e: number }>(ctx.cfg.SESSION_SECRET, getCookie(c, DBX_COOKIE) ?? '');
+      if (!dbx || !p || p.e < Date.now() || p.a !== id || p.s !== c.req.query('state')) return back('expired');
+      if (c.req.query('error') || !c.req.query('code')) return back('cancelled');
+      const t = await exchangeCode(dbx, c.req.query('code')!, dbxCallback(c), p.v);
+      if (!t.refresh_token) return back('failed');
+      await importer.connect(id, t.refresh_token, 'Dropbox');
+      log.info('box.dropbox_connected', { account: id });
+      return back('connected');
+    } catch (e) {
+      if (e instanceof BoxError) return fail(c, e);
+      log.warn('box.dropbox_connect_failed', { error: (e as Error).message });
+      return back('failed');
+    }
+  });
+
+  app.delete(
+    '/import/dropbox',
+    wrap(async (c) => {
+      await importer.disconnect(me(c));
+      return c.json({ ok: true });
+    }),
+  );
+
+  /** One folder of the member's Dropbox, for the picker. */
+  app.get(
+    '/import/dropbox/list',
+    wrap(async (c) => {
+      try {
+        const entries = await (await importer.client(me(c))).listFolder(c.req.query('path') ?? '');
+        entries.sort((a, b) => (a.tag === b.tag ? a.name.localeCompare(b.name) : a.tag === 'folder' ? -1 : 1));
+        return c.json({ entries: entries.map((e) => ({ name: e.name, path: e.path, folder: e.tag === 'folder', size: e.size })) });
+      } catch (e) {
+        if (e instanceof DropboxError && (e.status === 400 || e.status === 401)) throw new BoxError(409, 'Reconnect your Dropbox.', 'not_connected');
+        throw e;
+      }
+    }),
+  );
+
+  app.post(
+    '/import/jobs',
+    wrap(async (c) => {
+      const { paths } = z.object({ paths: z.array(z.string().min(1).max(1024)).min(1).max(200) }).parse(await c.req.json());
+      return c.json(await importer.start(me(c), paths), 201);
+    }),
+  );
+
+  app.post(
+    '/import/jobs/:id/:action{pause|resume|cancel}',
+    wrap(async (c) => c.json(await importer.setState(me(c), c.req.param('id')!, c.req.param('action') as 'pause' | 'resume' | 'cancel'))),
+  );
 
   app.post(
     '/usage/refresh',

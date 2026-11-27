@@ -20,6 +20,7 @@ import { BoxService, accountIdOf, accountIdOfMount, userMountId } from './box/se
 import { boxPublicRoutes, boxRoutes, shareRoute } from './box/routes.js';
 import { SITE_CSP, siteHtml, siteJs } from './box/site.js';
 import { bazzyEnabled, bazzyRoutes, setMemberMarker } from './box/bazzy.js';
+import { Importer } from './box/importer.js';
 import { playlistRoutes, publicPlaylistRoutes } from './box/playlists.js';
 
 export interface AppContext {
@@ -31,6 +32,7 @@ export interface AppContext {
   limiter: LoginLimiter;
   /** Present when BAZZYBOX=true: accounts, per-user storage, plans and credits. */
   box?: BoxService;
+  importer?: Importer;
 }
 
 /** Header the server sets on tus requests to carry the session subject. Client copies are stripped. */
@@ -61,6 +63,7 @@ export async function createContext(cfg: Config, db: Db, mounts: MountRegistry):
     sessions: new Sessions(cfg),
     limiter: new LoginLimiter(5),
     box,
+    importer: box ? new Importer(cfg, db, box) : undefined,
   };
 }
 

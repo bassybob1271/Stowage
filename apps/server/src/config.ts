@@ -56,6 +56,16 @@ const schema = z.object({
   BOX_DEV_CREDITS: bool.default('false'),
   STRIPE_SECRET_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
   STRIPE_WEBHOOK_SECRET: z.string().optional().or(z.literal('').transform(() => undefined)),
+  /**
+   * Import from Dropbox. Create an app at dropbox.com/developers (scoped access, Full Dropbox,
+   * permissions files.metadata.read + files.content.read) with redirect URI
+   * {APP_ORIGIN}/api/box/import/dropbox/callback. Empty hides the Dropbox import button.
+   */
+  DROPBOX_APP_KEY: z.string().optional().or(z.literal('').transform(() => undefined)),
+  DROPBOX_APP_SECRET: z.string().optional().or(z.literal('').transform(() => undefined)),
+  /** Files copied at once across all imports, and how often the import worker looks for work. */
+  IMPORT_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
+  IMPORT_INTERVAL_SEC: z.coerce.number().int().nonnegative().default(5),
   /** How often the storage meter and plan renewals run. */
   BOX_METER_INTERVAL_SEC: z.coerce.number().int().nonnegative().default(3600),
 });

@@ -109,6 +109,42 @@ export const sqliteSettlements = s.sqliteTable('wallet_settlements', {
   createdAt: s.text('created_at').notNull(),
 });
 
+/** Import from Dropbox (and later others): a member's connection, encrypted, and their import jobs. */
+export const sqliteImportSources = s.sqliteTable('import_sources', {
+  id: s.text('id').primaryKey(), // `${accountId}:${provider}`
+  accountId: s.text('account_id').notNull(),
+  provider: s.text('provider').notNull(),
+  tokenEnc: s.text('token_enc').notNull(),
+  label: s.text('label'),
+  createdAt: s.text('created_at').notNull(),
+});
+export const sqliteImportJobs = s.sqliteTable('import_jobs', {
+  id: s.text('id').primaryKey(),
+  accountId: s.text('account_id').notNull(),
+  provider: s.text('provider').notNull(),
+  sources: s.text('sources').notNull(), // JSON array of the folders/files picked
+  dest: s.text('dest').notNull(),
+  state: s.text('state').notNull(), // scanning | running | paused | done | failed | canceled
+  totalFiles: s.integer('total_files').notNull().default(0),
+  totalBytes: s.integer('total_bytes').notNull().default(0),
+  doneFiles: s.integer('done_files').notNull().default(0),
+  doneBytes: s.integer('done_bytes').notNull().default(0),
+  failedFiles: s.integer('failed_files').notNull().default(0),
+  error: s.text('error'),
+  createdAt: s.text('created_at').notNull(),
+  updatedAt: s.text('updated_at').notNull(),
+});
+export const sqliteImportItems = s.sqliteTable('import_items', {
+  id: s.text('id').primaryKey(),
+  jobId: s.text('job_id').notNull(),
+  src: s.text('src').notNull(), // provider file id
+  dest: s.text('dest').notNull(),
+  size: s.integer('size').notNull(),
+  state: s.text('state').notNull(), // pending | done | skipped | failed
+  tries: s.integer('tries').notNull().default(0),
+  error: s.text('error'),
+});
+
 export const sqlitePlaylists = s.sqliteTable('playlists', {
   id: s.text('id').primaryKey(),
   accountId: s.text('account_id').notNull(),
@@ -220,6 +256,42 @@ export const pgSettlements = p.pgTable('wallet_settlements', {
   createdAt: p.text('created_at').notNull(),
 });
 
+/** Import from Dropbox (and later others): a member's connection, encrypted, and their import jobs. */
+export const pgImportSources = p.pgTable('import_sources', {
+  id: p.text('id').primaryKey(), // `${accountId}:${provider}`
+  accountId: p.text('account_id').notNull(),
+  provider: p.text('provider').notNull(),
+  tokenEnc: p.text('token_enc').notNull(),
+  label: p.text('label'),
+  createdAt: p.text('created_at').notNull(),
+});
+export const pgImportJobs = p.pgTable('import_jobs', {
+  id: p.text('id').primaryKey(),
+  accountId: p.text('account_id').notNull(),
+  provider: p.text('provider').notNull(),
+  sources: p.text('sources').notNull(), // JSON array of the folders/files picked
+  dest: p.text('dest').notNull(),
+  state: p.text('state').notNull(), // scanning | running | paused | done | failed | canceled
+  totalFiles: p.integer('total_files').notNull().default(0),
+  totalBytes: p.bigint('total_bytes', { mode: 'number' }).notNull().default(0),
+  doneFiles: p.integer('done_files').notNull().default(0),
+  doneBytes: p.bigint('done_bytes', { mode: 'number' }).notNull().default(0),
+  failedFiles: p.integer('failed_files').notNull().default(0),
+  error: p.text('error'),
+  createdAt: p.text('created_at').notNull(),
+  updatedAt: p.text('updated_at').notNull(),
+});
+export const pgImportItems = p.pgTable('import_items', {
+  id: p.text('id').primaryKey(),
+  jobId: p.text('job_id').notNull(),
+  src: p.text('src').notNull(), // provider file id
+  dest: p.text('dest').notNull(),
+  size: p.bigint('size', { mode: 'number' }).notNull(),
+  state: p.text('state').notNull(), // pending | done | skipped | failed
+  tries: p.integer('tries').notNull().default(0),
+  error: p.text('error'),
+});
+
 export const pgPlaylists = p.pgTable('playlists', {
   id: p.text('id').primaryKey(),
   accountId: p.text('account_id').notNull(),
@@ -267,6 +339,17 @@ export function ddl(dialect: 'sqlite' | 'pg'): string[] {
     `CREATE TABLE IF NOT EXISTS wallet_settlements (
       id TEXT PRIMARY KEY, account_id TEXT NOT NULL, mc ${big} NOT NULL, note TEXT NOT NULL, state TEXT NOT NULL, created_at TEXT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS wallet_settlements_open ON wallet_settlements (account_id, state)`,
+    `CREATE TABLE IF NOT EXISTS import_sources (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, provider TEXT NOT NULL, token_enc TEXT NOT NULL, label TEXT, created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS import_jobs (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, provider TEXT NOT NULL, sources TEXT NOT NULL, dest TEXT NOT NULL, state TEXT NOT NULL,
+      total_files INTEGER NOT NULL DEFAULT 0, total_bytes ${big} NOT NULL DEFAULT 0, done_files INTEGER NOT NULL DEFAULT 0,
+      done_bytes ${big} NOT NULL DEFAULT 0, failed_files INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS import_jobs_account ON import_jobs (account_id, created_at)`,
+    `CREATE TABLE IF NOT EXISTS import_items (
+      id TEXT PRIMARY KEY, job_id TEXT NOT NULL, src TEXT NOT NULL, dest TEXT NOT NULL, size ${big} NOT NULL, state TEXT NOT NULL,
+      tries INTEGER NOT NULL DEFAULT 0, error TEXT)`,
+    `CREATE INDEX IF NOT EXISTS import_items_job ON import_items (job_id, state)`,
     `CREATE TABLE IF NOT EXISTS playlists (
       id TEXT PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, items TEXT NOT NULL,
       cover TEXT, cover_type TEXT, share_token TEXT UNIQUE, plays ${big} NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,

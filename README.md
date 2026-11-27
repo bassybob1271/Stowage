@@ -86,6 +86,17 @@ mounts:
 
 Then set `BAZZYBOX=true`, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, and add a Stripe webhook for `checkout.session.completed` pointing at `https://<host>/api/box/webhook/stripe`. For local testing without Stripe, use `BOX_DEV_CREDITS=true`. Pricing, the revenue model and operating notes are in [`docs/BAZZYBOX.md`](docs/BAZZYBOX.md).
 
+### Import from Dropbox
+
+Members can copy folders from their own Dropbox into BazzyBox (header → cloud icon). The server does the copying in the background, so the browser can close. Files land in `From Dropbox/<folder>`. Nothing in Dropbox is changed. Storage is checked against the member's plan before copying, files already present with the same size are skipped, and each file gets 3 tries.
+
+1. Create an app at <https://www.dropbox.com/developers/apps>: **Scoped access → Full Dropbox**.
+2. Permissions: `files.metadata.read`, `files.content.read`. Nothing else.
+3. Redirect URI: `{APP_ORIGIN}/api/box/import/dropbox/callback`.
+4. Set `DROPBOX_APP_KEY` and `DROPBOX_APP_SECRET`. Optional: `IMPORT_CONCURRENCY` (default 2 files at once), `IMPORT_INTERVAL_SEC` (default 5; `0` turns the worker off on this machine).
+
+A new Dropbox app only works for 500 users (and you) until you apply for production in its settings.
+
 ## Development
 
 Requires Node 22 and pnpm (`corepack enable`), plus Docker for the storage backends.

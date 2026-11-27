@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Menu, Search, Settings as SettingsIcon, Upload, X, Star, Clock, HardDrive, FolderUp, Wallet, ListMusic } from 'lucide-react';
+import { LogOut, Menu, Search, Settings as SettingsIcon, Upload, X, Star, Clock, HardDrive, FolderUp, Wallet, ListMusic, CloudDownload } from 'lucide-react';
 import type { MountInfo } from '@stowage/shared';
 import { api } from '../api';
 import { href, navigate, useLocation } from '../lib/router';
@@ -14,6 +14,7 @@ import { DialogHost } from './Dialogs';
 import { Settings } from './Settings';
 import { Billing } from './Billing';
 import { PlaylistMaker } from './PlaylistMaker';
+import { ImportDialog } from './ImportDialog';
 
 /** `account` = signed in with a BazzyBox account (one private mount, plan & credits instead of mount settings). */
 export function Shell({ account = false }: { account?: boolean }) {
@@ -24,6 +25,7 @@ export function Shell({ account = false }: { account?: boolean }) {
   const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState(false);
   const [billing, setBilling] = useState(() => account && new URLSearchParams(location.search).has('credits'));
+  const [importing, setImporting] = useState(() => account && new URLSearchParams(location.search).has('import'));
   const [playlists, setPlaylists] = useState(() => account && new URLSearchParams(location.search).has('playlists'));
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
@@ -109,6 +111,11 @@ export function Shell({ account = false }: { account?: boolean }) {
           <button className="btn btn-icon hidden sm:inline-flex" disabled={!writable} onClick={() => folderInput.current?.click()} title="Upload folder" aria-label="Upload folder">
             <FolderUp size={18} />
           </button>
+          {account && (
+            <button className="btn btn-icon" onClick={() => setImporting(true)} title="Import from Dropbox" aria-label="Import from Dropbox">
+              <CloudDownload size={18} />
+            </button>
+          )}
           {account ? (
             <button className="btn btn-icon" onClick={() => setBilling(true)} title="Plan & credits" aria-label="Plan and credits">
               <Wallet size={18} />
@@ -160,6 +167,14 @@ export function Shell({ account = false }: { account?: boolean }) {
           mount={list[0].id}
           onClose={() => {
             setPlaylists(false);
+            if (location.search) history.replaceState(null, '', location.pathname);
+          }}
+        />
+      )}
+      {importing && (
+        <ImportDialog
+          onClose={() => {
+            setImporting(false);
             if (location.search) history.replaceState(null, '', location.pathname);
           }}
         />
