@@ -49,7 +49,7 @@ export interface BoxSummary {
   account: { id: string; email: string; createdAt: string };
   plan: { id: BoxPlanId; label: string; priceCredits: number; includedBytes: number; periodEnd: number | null; overageCreditsPerTbMonth: number | null };
   usage: { usedBytes: number; allowedBytes: number; measuredAt: number | null; sendBytes: number; sendFreeBytes: number };
-  wallet: { credits: number; dailyChargeCredits: number };
+  wallet: { credits: number; dailyChargeCredits: number; shared?: boolean; manageUrl?: string | null };
   plans: BoxPlan[];
   packs: Record<string, { usdCents: number; credits: number }>;
   payments: 'stripe' | 'dev' | 'none';

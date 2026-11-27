@@ -30,8 +30,8 @@ export function setMemberMarker(c: Context, cfg: Config, on: boolean) {
 }
 const TTL_SEC = 600;
 
-/** Swappable for tests. */
-export const bazzyHttp = { fetch: (input: string, init?: RequestInit) => fetch(input, init) };
+import { bazzyHttp } from './http.js';
+export { bazzyHttp };
 
 export const bazzyEnabled = (cfg: Config) => Boolean(cfg.BAZZYBOX && cfg.BAZZY_AUTH_URL && cfg.BAZZY_CLIENT_SECRET);
 

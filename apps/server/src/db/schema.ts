@@ -95,6 +95,20 @@ export const sqliteAccountLinks = s.sqliteTable('account_links', {
   createdAt: s.text('created_at').notNull(),
 });
 
+/**
+ * Box's side of the shared Bazzy wallet: each push of whole credits to Bazzy TV. `id` is the idempotency
+ * ref Bazzy TV sees, so a pending row retried after a crash or timeout is applied there once.
+ * state: pending | done | refused (Bazzy TV balance too low; the amount stays owed in accounts.wallet_mc).
+ */
+export const sqliteSettlements = s.sqliteTable('wallet_settlements', {
+  id: s.text('id').primaryKey(),
+  accountId: s.text('account_id').notNull(),
+  mc: s.integer('mc').notNull(),
+  note: s.text('note').notNull(),
+  state: s.text('state').notNull(),
+  createdAt: s.text('created_at').notNull(),
+});
+
 export const sqlitePlaylists = s.sqliteTable('playlists', {
   id: s.text('id').primaryKey(),
   accountId: s.text('account_id').notNull(),
@@ -197,6 +211,15 @@ export const pgAccountLinks = p.pgTable('account_links', {
   createdAt: p.text('created_at').notNull(),
 });
 
+export const pgSettlements = p.pgTable('wallet_settlements', {
+  id: p.text('id').primaryKey(),
+  accountId: p.text('account_id').notNull(),
+  mc: p.bigint('mc', { mode: 'number' }).notNull(),
+  note: p.text('note').notNull(),
+  state: p.text('state').notNull(),
+  createdAt: p.text('created_at').notNull(),
+});
+
 export const pgPlaylists = p.pgTable('playlists', {
   id: p.text('id').primaryKey(),
   accountId: p.text('account_id').notNull(),
@@ -241,6 +264,9 @@ export function ddl(dialect: 'sqlite' | 'pg'): string[] {
     `CREATE TABLE IF NOT EXISTS account_links (
       id TEXT PRIMARY KEY, provider TEXT NOT NULL, subject TEXT NOT NULL, account_id TEXT NOT NULL, created_at TEXT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS account_links_account ON account_links (account_id)`,
+    `CREATE TABLE IF NOT EXISTS wallet_settlements (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, mc ${big} NOT NULL, note TEXT NOT NULL, state TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS wallet_settlements_open ON wallet_settlements (account_id, state)`,
     `CREATE TABLE IF NOT EXISTS playlists (
       id TEXT PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, items TEXT NOT NULL,
       cover TEXT, cover_type TEXT, share_token TEXT UNIQUE, plays ${big} NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
