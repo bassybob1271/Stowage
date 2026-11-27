@@ -69,6 +69,10 @@ export class BoxService {
   // ---------- accounts ----------
 
   async signup(emailRaw: string, password: string): Promise<Account> {
+    // With Bazzy TV sign-in on, every new member gets one Bazzy TV account (films, Live, Box), not a Box-only login.
+    if (this.cfg.BAZZYBOX && this.cfg.BAZZY_AUTH_URL && this.cfg.BAZZY_CLIENT_SECRET) {
+      throw new BoxError(403, 'Create your account with Bazzy TV: one account for films, live concerts and BazzyBox.', 'use_bazzy');
+    }
     return this.createAccount(emailRaw, password);
   }
 

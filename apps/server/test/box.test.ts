@@ -263,7 +263,7 @@ describe('public website', () => {
     expect(html).toContain('<title>BazzyBox</title>');
     expect(html).toContain('$9.99'); // Flex price comes from pricing.ts
     expect(html).toContain('href="/signup"');
-    expect(html).toContain('https://live.bazzy.io'); // link back to Bazzy TV
+    expect(html).toContain('https://video.bazzy.tv'); // link back to Bazzy TV
     expect(r.headers.get('content-security-policy')).toContain("script-src 'self'");
     expect(html).not.toMatch(/<script>(?!<\/script>)/); // no inline script
   });

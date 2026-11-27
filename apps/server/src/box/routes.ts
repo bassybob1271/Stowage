@@ -10,6 +10,7 @@ import { log } from '../log.js';
 import { BoxError, accountIdOf, accountIdOfMount, userSub, type BoxService } from './service.js';
 import { PACKS, type PackId } from './pricing.js';
 import { createCheckout, verifyWebhook } from './stripe.js';
+import { setMemberMarker } from './bazzy.js';
 
 const credsSchema = z.object({
   email: z.string().email().max(254),
@@ -65,6 +66,7 @@ export function boxPublicRoutes(ctx: AppContext, box: BoxService) {
       }
       ctx.limiter.succeed(ip);
       await ctx.sessions.issue(c, userSub(a.id));
+      setMemberMarker(c, ctx.cfg, true);
       return c.json({ ok: true });
     }),
   );

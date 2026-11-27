@@ -30,6 +30,7 @@ const cfg = loadConfig({
 } as NodeJS.ProcessEnv);
 
 let app: ReturnType<typeof createApp>;
+let ctx: Awaited<ReturnType<typeof createContext>>;
 const json = { 'content-type': 'application/json' };
 
 /** A fake Bazzy TV: issues a code for whoever `nextUser` is, and checks client auth + PKCE like the real one. */
@@ -72,6 +73,9 @@ async function signIn(opts: { tamperState?: boolean } = {}) {
   const state = opts.tamperState ? 'forged' : q.get('state')!;
   return app.request(`/api/auth/bazzy/callback?code=${code}&state=${encodeURIComponent(state)}`, { headers: { cookie } });
 }
+/** A BazzyBox password account from before sign-up moved to Bazzy TV. */
+const legacyAccount = (email: string) => ctx.box!['createAccount'](email, 'correct horse battery');
+
 const sessionOf = (r: Response) => r.headers.getSetCookie().find((c) => !c.startsWith('bz_bazzy'))!.split(';')[0]!;
 
 beforeAll(async () => {
@@ -79,7 +83,8 @@ beforeAll(async () => {
   const mounts = new MountRegistry(db, cfg.MASTER_KEY);
   await mounts.load(cfg.MOUNTS_FILE);
   await mounts.checkHealth(0);
-  app = createApp(await createContext(cfg, db, mounts));
+  ctx = await createContext(cfg, db, mounts);
+  app = createApp(ctx);
 });
 
 describe('Sign in with Bazzy TV', () => {
@@ -105,8 +110,9 @@ describe('Sign in with Bazzy TV', () => {
   });
 
   it('links a verified Bazzy email to an existing password account', async () => {
-    const su = await app.request('/api/auth/box/signup', { method: 'POST', headers: json, body: JSON.stringify({ email: 'pw@example.com', password: 'correct horse battery' }) });
-    expect(su.status).toBe(201);
+    await legacyAccount('pw@example.com');
+    const su = await app.request('/api/auth/box/login', { method: 'POST', headers: json, body: JSON.stringify({ email: 'pw@example.com', password: 'correct horse battery' }) });
+    expect(su.status).toBe(200);
     const pwMe = (await (await app.request('/api/box/me', { headers: { cookie: su.headers.get('set-cookie')!.split(';')[0]! } })).json()) as { account: { id: string } };
     nextUser = { sub: 'bz-2', email: 'pw@example.com', email_verified: true };
     const viaBazzy = (await (await app.request('/api/box/me', { headers: { cookie: sessionOf(await signIn()) } })).json()) as { account: { id: string } };
@@ -114,7 +120,7 @@ describe('Sign in with Bazzy TV', () => {
   });
 
   it('refuses an unverified Bazzy email that matches someone else’s account', async () => {
-    await app.request('/api/auth/box/signup', { method: 'POST', headers: json, body: JSON.stringify({ email: 'victim@example.com', password: 'correct horse battery' }) });
+    await legacyAccount('victim@example.com');
     nextUser = { sub: 'bz-attacker', email: 'victim@example.com', email_verified: false };
     const r = await signIn();
     expect(r.status).toBe(303);
@@ -132,5 +138,18 @@ describe('Sign in with Bazzy TV', () => {
   it('passes a cancelled consent back as a friendly error', async () => {
     const r = await app.request('/api/auth/bazzy/callback?error=access_denied&state=x');
     expect(decodeURIComponent(r.headers.get('location')!)).toContain('cancelled');
+  });
+});
+
+describe('one Bazzy TV account', () => {
+  it('sends new Box sign-ups to Bazzy TV instead of making a Box-only login', async () => {
+    const r = await app.request('/api/auth/box/signup', { method: 'POST', headers: json, body: JSON.stringify({ email: 'new@example.com', password: 'correct horse battery' }) });
+    expect(r.status).toBe(403);
+    expect(((await r.json()) as { error: string }).error).toMatch(/Bazzy TV/);
+    const page = await app.request('/signup');
+    expect(page.status).toBe(302);
+    expect(page.headers.get('location')).toBe('/api/auth/bazzy/start?signup=1');
+    const start = await app.request('/api/auth/bazzy/start?signup=1');
+    expect(new URL(start.headers.get('location')!).searchParams.get('screen')).toBe('signup');
   });
 });

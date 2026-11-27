@@ -16,6 +16,18 @@ import { log } from '../log.js';
 import { BoxError, userSub, type BoxService } from './service.js';
 
 const COOKIE = 'bz_bazzy';
+const MEMBER = 'bazzy_member';
+
+/**
+ * bazzy.tv sends returning members straight to their app. That marker lives on .bazzy.tv,
+ * so Box only sets it when it's served from a bazzy.tv address (box.bazzy.tv). No account data in it.
+ */
+export function setMemberMarker(c: Context, cfg: Config, on: boolean) {
+  const host = new URL(origin(c, cfg)).hostname;
+  if (host !== 'bazzy.tv' && !host.endsWith('.bazzy.tv')) return;
+  if (on) setCookie(c, MEMBER, 'box', { domain: '.bazzy.tv', path: '/', maxAge: 31536000, sameSite: 'Lax', secure: true });
+  else deleteCookie(c, MEMBER, { domain: '.bazzy.tv', path: '/', secure: true });
+}
 const TTL_SEC = 600;
 
 /** Swappable for tests. */
@@ -56,6 +68,7 @@ export function bazzyRoutes(ctx: AppContext, box: BoxService) {
       maxAge: TTL_SEC,
     });
     const q = new URLSearchParams({
+      ...(c.req.query('signup') ? { screen: 'signup' } : {}),
       response_type: 'code',
       client_id: cfg.BAZZY_CLIENT_ID,
       redirect_uri: callbackUrl(c, cfg),
@@ -98,6 +111,7 @@ export function bazzyRoutes(ctx: AppContext, box: BoxService) {
       const account = await box.signInWithBazzy({ sub: String(info.sub), email: info.email, emailVerified: info.email_verified === true });
       deleteCookie(c, COOKIE, { path: '/api/auth/bazzy' });
       await ctx.sessions.issue(c, userSub(account.id));
+      setMemberMarker(c, cfg, true);
       log.info('box.bazzy_login', { account: account.id });
       return c.redirect('/', 303);
     } catch (e) {

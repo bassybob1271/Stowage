@@ -19,7 +19,7 @@ import type { Mount } from './mounts.js';
 import { BoxService, accountIdOf, accountIdOfMount, userMountId } from './box/service.js';
 import { boxPublicRoutes, boxRoutes, shareRoute } from './box/routes.js';
 import { SITE_CSP, siteHtml, siteJs } from './box/site.js';
-import { bazzyEnabled, bazzyRoutes } from './box/bazzy.js';
+import { bazzyEnabled, bazzyRoutes, setMemberMarker } from './box/bazzy.js';
 import { playlistRoutes, publicPlaylistRoutes } from './box/playlists.js';
 
 export interface AppContext {
@@ -148,6 +148,7 @@ export function createApp(ctx: AppContext) {
 
   app.post('/api/auth/logout', (c) => {
     ctx.sessions.clear(c);
+    if (ctx.box) setMemberMarker(c, cfg, false);
     return c.json({ ok: true });
   });
 
@@ -266,6 +267,8 @@ export function createApp(ctx: AppContext) {
   // ---------- BazzyBox public website ----------
   // Visitors without a session get the marketing site at "/"; signed-in users fall through to the app.
   if (ctx.box) {
+    // New members sign up once, on Bazzy TV, and come back here signed in.
+    if (bazzyEnabled(cfg)) app.get('/signup', (c) => c.redirect('/api/auth/bazzy/start?signup=1', 302));
     const site = siteHtml({ freeGb: cfg.BOX_FREE_GB, tvUrl: cfg.BAZZY_TV_URL, signupOpen: cfg.BOX_SIGNUP === 'open' });
     app.get('/', async (c, next) => {
       if (await ctx.sessions.read(c)) return next();

@@ -1,5 +1,5 @@
 /**
- * Public BazzyBox website, served at "/" on the BazzyBox host (box.bazzy.io) to visitors
+ * Public BazzyBox website, served at "/" on the BazzyBox host (box.bazzy.tv) to visitors
  * without a session. Signed-in users get the file app at the same URL.
  * Prices come from pricing.ts so the page can never disagree with what the wallet charges.
  * No inline script: the calculator lives in /site.js (CSP script-src 'self').

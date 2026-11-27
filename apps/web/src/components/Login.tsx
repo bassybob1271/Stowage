@@ -79,7 +79,7 @@ function CodeLogin({ onSuccess }: { onSuccess: () => void }) {
 /** BazzyBox: email + password, with sign-up. The owner can still use the access code. */
 function BoxLogin({ onSuccess, onOwner, bazzy }: { onSuccess: () => void; onOwner: () => void; bazzy: boolean }) {
   // The public site links to /signup and /login; land on the matching tab.
-  const [mode, setMode] = useState<'in' | 'up'>(() => (window.location.pathname === '/signup' ? 'up' : 'in'));
+  const [mode, setMode] = useState<'in' | 'up'>(() => (!bazzy && window.location.pathname === '/signup' ? 'up' : 'in'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   // A failed "Sign in with Bazzy TV" comes back as /login?error=…
@@ -117,19 +117,22 @@ function BoxLogin({ onSuccess, onOwner, bazzy }: { onSuccess: () => void; onOwne
             <a href="/api/auth/bazzy/start" className="btn btn-primary justify-center py-2.5">
               Sign in with Bazzy TV
             </a>
-            <p className="text-xs text-muted text-center -mt-1">Uses your Bazzy TV login, including Apple or Google.</p>
+            <a href="/api/auth/bazzy/start?signup=1" className="btn justify-center py-2.5">
+              Create a Bazzy TV account
+            </a>
+            <p className="text-xs text-muted text-center -mt-1">One account for films, live concerts and BazzyBox. Apple and Google work too.</p>
             <div className="flex items-center gap-3 text-xs text-muted">
-              <span className="h-px flex-1 bg-line" />or use email<span className="h-px flex-1 bg-line" />
+              <span className="h-px flex-1 bg-line" />or sign in with a BazzyBox password<span className="h-px flex-1 bg-line" />
             </div>
           </>
         )}
-        <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-app border border-line" role="tablist">
+        {!bazzy && <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-app border border-line" role="tablist">
           {(['in', 'up'] as const).map((m) => (
             <button key={m} type="button" role="tab" aria-selected={mode === m} className={`btn justify-center ${mode === m ? 'btn-primary' : ''}`} onClick={() => setMode(m)}>
               {m === 'in' ? 'Sign in' : 'Create account'}
             </button>
           ))}
-        </div>
+        </div>}
         <label className="flex flex-col gap-1 text-sm">
           <span>Email</span>
           <input id="box-email" className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
