@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowDown, ArrowUp, ChevronRight, Download, FolderPlus, LayoutGrid, List, Trash2, MoveRight, Pencil, Link2, Hash, Star,
-  ExternalLink, RefreshCw, Share2 } from 'lucide-react';
+  ExternalLink, RefreshCw, Share2, MessageSquare } from 'lucide-react';
 import type { FileStat, MountInfo } from '@stowage/shared';
 import { api, downloadUrl, thumbUrl, zipUrl, ApiError } from '../api';
 import { href, navigate } from '../lib/router';
@@ -176,6 +176,19 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
         const full = location.origin + url;
         await navigator.clipboard.writeText(full).then(
           () => toast(`Share link copied. It works until ${new Date(expiresAt).toLocaleDateString()}.`),
+          () => toast(full),
+        );
+      } catch (err) {
+        toast((err as Error).message, 'error');
+      }
+    },
+    /** BazzyBox: a link where anyone can play the file and leave timed comments. */
+    async reviewLink(e: FileStat) {
+      try {
+        const { url, expiresAt } = await api.box.review(e.path, 14);
+        const full = location.origin + url;
+        await navigator.clipboard.writeText(full).then(
+          () => toast(`Review link copied. Anyone with it can play and comment until ${new Date(expiresAt).toLocaleDateString()}.`),
           () => toast(full),
         );
       } catch (err) {
@@ -470,6 +483,9 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
           {menuTarget && <button onClick={() => void act.copyLink(menuTarget)}><Link2 size={15} /> Copy link</button>}
           {menuTarget && !menuTarget.isDir && /^box-[0-9a-f]{16}$/.test(mount.id) && (
             <button onClick={() => void act.shareLink(menuTarget)}><Share2 size={15} /> Create share link</button>
+          )}
+          {menuTarget && !menuTarget.isDir && /^box-[0-9a-f]{16}$/.test(mount.id) && /^(audio|video)\//.test(menuTarget.mime) && (
+            <button onClick={() => void act.reviewLink(menuTarget)}><MessageSquare size={15} /> Get review link</button>
           )}
           {menuTarget?.cid && <button onClick={() => void act.showCid(menuTarget)}><Hash size={15} /> Show CID</button>}
           {menuTarget && (

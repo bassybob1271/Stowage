@@ -161,6 +161,32 @@ export const sqlitePlaylists = s.sqliteTable('playlists', {
   updatedAt: s.text('updated_at').notNull(),
 });
 
+export const sqliteComments = s.sqliteTable('comments', {
+  id: s.text('id').primaryKey(),
+  mountId: s.text('mount_id').notNull(),
+  path: s.text('path').notNull(),
+  /** Reply to another comment (one level deep). */
+  parentId: s.text('parent_id'),
+  /** Session subject (BazzyBox account id or 'owner'); null for a guest on a review link. */
+  authorId: s.text('author_id'),
+  authorName: s.text('author_name').notNull(),
+  body: s.text('body').notNull(),
+  /** Position in the media, milliseconds; null = about the whole file. */
+  tMs: s.integer('t_ms'),
+  tEndMs: s.integer('t_end_ms'),
+  resolvedAt: s.text('resolved_at'),
+  createdAt: s.text('created_at').notNull(),
+  updatedAt: s.text('updated_at').notNull(),
+});
+/** Review links: a guest can play one file and leave timed comments. */
+export const sqliteReviewLinks = s.sqliteTable('review_links', {
+  token: s.text('token').primaryKey(),
+  accountId: s.text('account_id').notNull(),
+  path: s.text('path').notNull(),
+  expiresAt: s.text('expires_at').notNull(),
+  createdAt: s.text('created_at').notNull(),
+});
+
 // ---------- Postgres ----------
 export const pgFiles = p.pgTable(
   'files',
@@ -307,6 +333,28 @@ export const pgPlaylists = p.pgTable('playlists', {
 });
 
 /** Idempotent DDL. Kept as plain SQL so boot needs no migration tool. */
+export const pgComments = p.pgTable('comments', {
+  id: p.text('id').primaryKey(),
+  mountId: p.text('mount_id').notNull(),
+  path: p.text('path').notNull(),
+  parentId: p.text('parent_id'),
+  authorId: p.text('author_id'),
+  authorName: p.text('author_name').notNull(),
+  body: p.text('body').notNull(),
+  tMs: p.bigint('t_ms', { mode: 'number' }),
+  tEndMs: p.bigint('t_end_ms', { mode: 'number' }),
+  resolvedAt: p.text('resolved_at'),
+  createdAt: p.text('created_at').notNull(),
+  updatedAt: p.text('updated_at').notNull(),
+});
+export const pgReviewLinks = p.pgTable('review_links', {
+  token: p.text('token').primaryKey(),
+  accountId: p.text('account_id').notNull(),
+  path: p.text('path').notNull(),
+  expiresAt: p.text('expires_at').notNull(),
+  createdAt: p.text('created_at').notNull(),
+});
+
 export function ddl(dialect: 'sqlite' | 'pg'): string[] {
   const big = dialect === 'pg' ? 'BIGINT' : 'INTEGER';
   const bool = dialect === 'pg' ? 'BOOLEAN' : 'INTEGER';
@@ -354,5 +402,12 @@ export function ddl(dialect: 'sqlite' | 'pg'): string[] {
       id TEXT PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, items TEXT NOT NULL,
       cover TEXT, cover_type TEXT, share_token TEXT UNIQUE, plays ${big} NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS playlists_account ON playlists (account_id, updated_at)`,
+    `CREATE TABLE IF NOT EXISTS comments (
+      id TEXT PRIMARY KEY, mount_id TEXT NOT NULL, path TEXT NOT NULL, parent_id TEXT, author_id TEXT, author_name TEXT NOT NULL,
+      body TEXT NOT NULL, t_ms ${big}, t_end_ms ${big}, resolved_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS comments_file ON comments (mount_id, path)`,
+    `CREATE TABLE IF NOT EXISTS review_links (
+      token TEXT PRIMARY KEY, account_id TEXT NOT NULL, path TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL)`,
+    `CREATE INDEX IF NOT EXISTS review_links_account ON review_links (account_id)`,
   ];
 }

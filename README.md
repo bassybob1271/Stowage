@@ -86,6 +86,12 @@ mounts:
 
 Then set `BAZZYBOX=true`, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, and add a Stripe webhook for `checkout.session.completed` pointing at `https://<host>/api/box/webhook/stripe`. For local testing without Stripe, use `BOX_DEV_CREDITS=true`. Pricing, the revenue model and operating notes are in [`docs/BAZZYBOX.md`](docs/BAZZYBOX.md).
 
+### Timed comments and review links
+
+Audio and video files take comments pinned to a moment or a range, like "raise the vocal at 1:36". Pause where you hear something and write: the note is pinned to the playhead. Use **+ end** for a range, or switch to *whole file*. Pins sit along the timeline (under the waveform or the video); click one to jump there. Timestamps typed in the text (`1:36`, `1:02:10`) become jump links too. Comments have one level of replies, can be resolved, and follow the file when it's renamed or moved. They're deleted with the file.
+
+In BazzyBox, **Get review link** (right-click an audio or video file) copies a `/r/<token>` link, good for 14 days. Anyone with it can play the file and leave timed comments under their name, without an account. The owner sees those notes in the file, and can resolve or delete them. Playback counts against the owner's send allowance, like share links. Guest posts are JSON-only and same-site, limited to 12 per minute per IP.
+
 ### Import from Dropbox
 
 Members can copy folders from their own Dropbox into BazzyBox (header → cloud icon). The server does the copying in the background, so the browser can close. Files land in `From Dropbox/<folder>`. Nothing in Dropbox is changed. Storage is checked against the member's plan before copying, files already present with the same size are skipped, and each file gets 3 tries.

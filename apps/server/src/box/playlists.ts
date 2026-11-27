@@ -317,7 +317,7 @@ export function publicPlaylistRoutes(ctx: AppContext, box: BoxService) {
   return app;
 }
 
-function pageShell(title: string, body: string, head = '') {
+export function pageShell(title: string, body: string, head = '') {
   return `<!doctype html>
 <html lang="en">
 <head>

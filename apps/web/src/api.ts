@@ -56,6 +56,21 @@ export interface BoxSummary {
   history: { at: string; credits: number; kind: string; note: string }[];
 }
 
+export interface TimedComment {
+  id: string;
+  parentId: string | null;
+  author: string;
+  guest: boolean;
+  mine: boolean;
+  body: string;
+  /** Seconds into the media; null = about the whole file. */
+  t: number | null;
+  tEnd: number | null;
+  resolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DropboxEntry {
   name: string;
   path: string;
@@ -126,7 +141,16 @@ export const api = {
   session: () => call<Session>('/api/auth/session'),
   boxSignup: (email: string, password: string) => call<{ ok: true }>('/api/auth/box/signup', { method: 'POST', body: JSON.stringify({ email, password }) }),
   boxLogin: (email: string, password: string) => call<{ ok: true }>('/api/auth/box/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  comments: {
+    list: (mount: string, path: string) => call<{ comments: TimedComment[] }>(`/api/comments/${enc(mount)}?path=${enc(path)}`),
+    add: (mount: string, path: string, c: { body: string; t?: number | null; tEnd?: number | null; parentId?: string | null }) =>
+      call<TimedComment>(`/api/comments/${enc(mount)}`, { method: 'POST', body: JSON.stringify({ path, ...c }) }),
+    update: (mount: string, id: string, patch: { body?: string; resolved?: boolean }) =>
+      call<TimedComment>(`/api/comments/${enc(mount)}/${enc(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+    remove: (mount: string, id: string) => call(`/api/comments/${enc(mount)}/${enc(id)}`, { method: 'DELETE' }),
+  },
   box: {
+    review: (path: string, days = 14) => call<{ url: string; expiresAt: string }>('/api/box/reviews', { method: 'POST', body: JSON.stringify({ path, days }) }),
     importer: {
       status: () => call<ImportStatus>('/api/box/import'),
       list: (path = '') => call<{ entries: DropboxEntry[] }>(`/api/box/import/dropbox/list?path=${enc(path)}`),

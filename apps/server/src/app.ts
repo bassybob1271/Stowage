@@ -11,6 +11,7 @@ import { escapeLike } from './db/index.js';
 import type { MountRegistry } from './mounts.js';
 import { CodeGateProvider, LoginLimiter, Sessions, clientIp, logFailedLogin, type AuthProvider } from './auth.js';
 import { fsRoutes } from './routes/fs.js';
+import { commentRoutes, reviewOwnerRoutes, reviewPublicRoutes } from './comments.js';
 import { createTus } from './tus.js';
 import { serveFile } from './serve.js';
 import { verifyToken } from './crypto.js';
@@ -170,6 +171,7 @@ export function createApp(ctx: AppContext) {
     app.route('/api', boxPublicRoutes(ctx, ctx.box));
     if (bazzyEnabled(cfg)) app.route('/api', bazzyRoutes(ctx, ctx.box));
     app.route('/', publicPlaylistRoutes(ctx, ctx.box));
+    app.route('/', reviewPublicRoutes(ctx, ctx.box));
     app.on(['GET', 'HEAD'], '/s/:token/:name?', shareRoute(ctx, ctx.box));
   }
 
@@ -247,8 +249,10 @@ export function createApp(ctx: AppContext) {
   });
 
   app.route('/api/fs', fsRoutes(ctx));
+  app.route('/api/comments', commentRoutes(ctx));
   if (ctx.box) {
     app.route('/api/box/playlists', playlistRoutes(ctx, ctx.box));
+    app.route('/api/box/reviews', reviewOwnerRoutes(ctx, ctx.box));
     app.route('/api/box', boxRoutes(ctx, ctx.box));
   }
 

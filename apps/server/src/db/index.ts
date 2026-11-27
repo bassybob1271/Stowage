@@ -18,6 +18,8 @@ type Tables = {
   importJobs: typeof schema.sqliteImportJobs;
   importItems: typeof schema.sqliteImportItems;
   playlists: typeof schema.sqlitePlaylists;
+  comments: typeof schema.sqliteComments;
+  reviewLinks: typeof schema.sqliteReviewLinks;
 };
 
 /**
@@ -40,7 +42,7 @@ export async function openDb(url: string): Promise<Db> {
     return {
       dialect: 'pg',
       orm: drizzle(client) as unknown as BetterSQLite3Database,
-      t: { files: schema.pgFiles, shares: schema.pgShares, uploads: schema.pgUploads, mounts: schema.pgMounts, accounts: schema.pgAccounts, ledger: schema.pgLedger, accountLinks: schema.pgAccountLinks, settlements: schema.pgSettlements, importSources: schema.pgImportSources, importJobs: schema.pgImportJobs, importItems: schema.pgImportItems, playlists: schema.pgPlaylists } as unknown as Tables,
+      t: { files: schema.pgFiles, shares: schema.pgShares, uploads: schema.pgUploads, mounts: schema.pgMounts, accounts: schema.pgAccounts, ledger: schema.pgLedger, accountLinks: schema.pgAccountLinks, settlements: schema.pgSettlements, importSources: schema.pgImportSources, importJobs: schema.pgImportJobs, importItems: schema.pgImportItems, playlists: schema.pgPlaylists, comments: schema.pgComments, reviewLinks: schema.pgReviewLinks } as unknown as Tables,
       close: () => client.end(),
     };
   }
@@ -55,7 +57,7 @@ export async function openDb(url: string): Promise<Db> {
   return {
     dialect: 'sqlite',
     orm: drizzle(sqlite),
-    t: { files: schema.sqliteFiles, shares: schema.sqliteShares, uploads: schema.sqliteUploads, mounts: schema.sqliteMounts, accounts: schema.sqliteAccounts, ledger: schema.sqliteLedger, accountLinks: schema.sqliteAccountLinks, settlements: schema.sqliteSettlements, importSources: schema.sqliteImportSources, importJobs: schema.sqliteImportJobs, importItems: schema.sqliteImportItems, playlists: schema.sqlitePlaylists },
+    t: { files: schema.sqliteFiles, shares: schema.sqliteShares, uploads: schema.sqliteUploads, mounts: schema.sqliteMounts, accounts: schema.sqliteAccounts, ledger: schema.sqliteLedger, accountLinks: schema.sqliteAccountLinks, settlements: schema.sqliteSettlements, importSources: schema.sqliteImportSources, importJobs: schema.sqliteImportJobs, importItems: schema.sqliteImportItems, playlists: schema.sqlitePlaylists, comments: schema.sqliteComments, reviewLinks: schema.sqliteReviewLinks },
     close: async () => {
       sqlite.close();
     },
