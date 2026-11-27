@@ -305,7 +305,11 @@ export function createApp(ctx: AppContext) {
       }),
     );
     app.use('*', serveStatic({ root: relative(process.cwd(), dist) }));
-    app.get('*', (c: Context) => c.html(index));
+    // The page itself must never be cached: it names this build's hashed assets, so an old copy keeps old features.
+    app.get('*', (c: Context) => {
+      c.header('Cache-Control', 'no-cache');
+      return c.html(index);
+    });
   } else {
     app.get('/', (c) => c.text(`Web app not built (looked in ${dist}). Run: pnpm --filter @stowage/web build`, 503));
   }
