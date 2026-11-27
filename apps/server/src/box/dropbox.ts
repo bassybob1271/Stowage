@@ -141,7 +141,12 @@ export class DropboxClient {
       headers: { authorization: `Bearer ${await this.token()}`, 'dropbox-api-arg': headerJson({ path: idOrPath }) },
     });
     if (r.status === 401) this.access = undefined;
-    if (!r.ok || !r.body) throw new DropboxError(r.status, `Dropbox download failed (${r.status})`);
+    if (!r.ok || !r.body) {
+      const why = (await r.text().catch(() => '')).slice(0, 200);
+      if (/missing_scope|files\.content\.read/.test(why))
+        throw new DropboxError(r.status, 'Dropbox won’t let BazzyBox download files yet: tick files.content.read in the Dropbox app’s Permissions, then disconnect and connect Dropbox again.');
+      throw new DropboxError(r.status, `Dropbox download failed (${r.status})${why ? `: ${why}` : ''}`);
+    }
     return r.body;
   }
 }

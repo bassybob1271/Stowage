@@ -283,11 +283,16 @@ export class Importer {
     const [job] = await this.db.orm.select().from(j).where(eq(j.id, jobId));
     if (!job || job.state !== 'running') return;
     const failed = job.failedFiles > 0;
+    let why = '';
+    if (failed) {
+      const [one] = await this.db.orm.select({ error: it.error }).from(it).where(and(eq(it.jobId, jobId), eq(it.state, 'failed'))).limit(1);
+      if (one?.error) why = ` ${one.error}`;
+    }
     await this.db.orm
       .update(j)
       .set({
         state: failed ? 'failed' : 'done',
-        error: failed ? `${job.failedFiles} file${job.failedFiles > 1 ? 's' : ''} couldn't be copied. Resume to try them again.` : null,
+        error: failed ? `${job.failedFiles} file${job.failedFiles > 1 ? 's' : ''} couldn't be copied.${why}`.slice(0, 500) : null,
         updatedAt: this.iso(),
       })
       .where(eq(j.id, jobId));

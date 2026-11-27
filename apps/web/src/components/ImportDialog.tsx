@@ -36,7 +36,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
   const s = status.data;
   const active = s?.jobs.find((j) => ACTIVE.has(j.state));
-  const past = s?.jobs.filter((j) => j !== active).slice(0, 5) ?? [];
+  const past = s?.jobs.filter((j) => j !== active && !(j === s.jobs[0] && j.state === 'failed')).slice(0, 5) ?? [];
 
   const disconnect = useMutation({
     mutationFn: api.box.importer.disconnect,
@@ -84,6 +84,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             )}
 
             {active && <Progress job={active} />}
+            {!active && s.jobs[0]?.state === 'failed' && <Failed job={s.jobs[0]} onDone={() => qc.invalidateQueries({ queryKey: ['box-import'] })} />}
 
             {s.dropbox.available && s.dropbox.connected && !active && (
               <Picker label={s.dropbox.label} onStarted={() => qc.invalidateQueries({ queryKey: ['box-import'] })} />
@@ -155,6 +156,24 @@ function Progress({ job }: { job: ImportJob }) {
   );
 }
 
+function Failed({ job, onDone }: { job: ImportJob; onDone: () => void }) {
+  const retry = useMutation({
+    mutationFn: () => api.box.importer.act(job.id, 'resume'),
+    onSuccess: onDone,
+    onError: (e) => toast((e as Error).message, 'error'),
+  });
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+      <h3 className="font-semibold">Some files didn’t come over</h3>
+      <p className="text-xs text-muted tabular-nums">{job.doneFiles}/{job.totalFiles} files copied from {job.sources.map((p) => p.split('/').pop() || 'Dropbox').join(', ')}</p>
+      {job.error && <p className="text-xs text-amber-500 break-words">{job.error}</p>}
+      <div className="flex gap-2">
+        <button className="btn btn-primary" disabled={retry.isPending} onClick={() => retry.mutate()}>Retry failed files</button>
+      </div>
+    </section>
+  );
+}
+
 function Picker({ label, onStarted }: { label?: string | null; onStarted: () => void }) {
   const [path, setPath] = useState('');
   const [picked, setPicked] = useState<Map<string, DropboxEntry>>(new Map());
@@ -187,7 +206,7 @@ function Picker({ label, onStarted }: { label?: string | null; onStarted: () => 
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center gap-1 text-xs text-muted flex-wrap">
-        {label && <span className="mr-2">{label}</span>}
+        {label && label !== 'Dropbox' && <span className="mr-2">{label} ·</span>}
         <button className="hover:underline" onClick={() => setPath('')}>Dropbox</button>
         {crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-1">
