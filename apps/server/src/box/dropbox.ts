@@ -143,7 +143,7 @@ export class DropboxClient {
     if (r.status === 401) this.access = undefined;
     if (!r.ok || !r.body) {
       const why = (await r.text().catch(() => '')).slice(0, 200);
-      if (/missing_scope|files\.content\.read/.test(why))
+      if (/missing_scope|files\.content\.read|not permitted to access this end/.test(why))
         throw new DropboxError(r.status, 'Dropbox won’t let BazzyBox download files yet: tick files.content.read in the Dropbox app’s Permissions, then disconnect and connect Dropbox again.');
       throw new DropboxError(r.status, `Dropbox download failed (${r.status})${why ? `: ${why}` : ''}`);
     }
