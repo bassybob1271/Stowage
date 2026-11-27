@@ -34,6 +34,8 @@ export interface Session {
   admin?: boolean;
   /** "Sign in with Bazzy TV" is configured. */
   bazzy?: boolean;
+  /** Sister Bazzy sites (BazzyBox mode). */
+  sites?: { tv: string | null; live: string | null };
 }
 
 export interface BoxPlan {

@@ -164,6 +164,7 @@ export function createApp(ctx: AppContext) {
       account: Boolean(accountIdOf(s?.sub)),
       admin: s?.sub === 'owner',
       bazzy: Boolean(ctx.box) && bazzyEnabled(cfg),
+      sites: ctx.box ? { tv: cfg.BAZZY_TV_URL ?? null, live: cfg.BAZZY_LIVE_URL ?? null } : undefined,
     });
   });
 
@@ -276,7 +277,7 @@ export function createApp(ctx: AppContext) {
   if (ctx.box) {
     // New members sign up once, on Bazzy TV, and come back here signed in.
     if (bazzyEnabled(cfg)) app.get('/signup', (c) => c.redirect('/api/auth/bazzy/start?signup=1', 302));
-    const site = siteHtml({ freeGb: cfg.BOX_FREE_GB, tvUrl: cfg.BAZZY_TV_URL, signupOpen: cfg.BOX_SIGNUP === 'open' });
+    const site = siteHtml({ freeGb: cfg.BOX_FREE_GB, tvUrl: cfg.BAZZY_TV_URL, liveUrl: cfg.BAZZY_LIVE_URL, signupOpen: cfg.BOX_SIGNUP === 'open' });
     app.get('/', async (c, next) => {
       if (await ctx.sessions.read(c)) return next();
       c.header('Content-Security-Policy', SITE_CSP);

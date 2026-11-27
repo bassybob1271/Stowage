@@ -27,6 +27,8 @@ export interface SiteOptions {
   freeGb: number;
   /** Link back to the Bazzy TV video site. */
   tvUrl?: string;
+  /** Link to Bazzy Live. */
+  liveUrl?: string;
   signupOpen: boolean;
 }
 
@@ -52,6 +54,7 @@ export function siteHtml(o: SiteOptions): string {
     return `<li><b>$${k.usdCents / 100}</b><span>${k.credits.toLocaleString('en-US')} credits${bonus > 0 ? ` <em>+${bonus}%</em>` : ''}</span></li>`;
   }).join('');
   const tv = o.tvUrl ? esc(o.tvUrl) : '';
+  const live = o.liveUrl ? esc(o.liveUrl) : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -155,6 +158,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
     <a href="#switch">Why switch</a>
     <a href="#faq">FAQ</a>
     ${tv ? `<a href="${tv}">Bazzy TV</a>` : ''}
+    ${live ? `<a href="${live}">Live</a>` : ''}
     <a href="/login">Sign in</a>
     <a class="btn go" href="${ctaHref}">${cta}</a>
   </div>
@@ -283,7 +287,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 
 <footer class="band"><div class="wrap">
   <span>BazzyBox from Bazzy TV</span>
-  <span>${tv ? `<a href="${tv}">Watch on Bazzy TV</a> · ` : ''}<a href="/login">Sign in</a></span>
+  <span>${tv ? `<a href="${tv}">Watch on Bazzy TV</a> · ` : ''}${live ? `<a href="${live}">Bazzy Live</a> · ` : ''}<a href="/login">Sign in</a></span>
 </div></footer>
 <script src="/site.js"></script>
 </body>

@@ -54,10 +54,11 @@ describe('ffmpegArgs', () => {
 
 describe('mediamtx config', () => {
   const cfg = loadConfig({ LIVE_PUBLISH_PASS: 'x"y\'z-very-long-pass' } as NodeJS.ProcessEnv);
-  const y = mediamtxConfig(cfg);
-  it('requires credentials to publish and limits read/API to localhost', () => {
-    expect(y).toContain('pass: "x\\"y\'z-very-long-pass"');
-    expect(y).toMatch(/user: any\n\s+pass:\n\s+ips: \['127\.0\.0\.1', '::1'\]/);
+  const y = mediamtxConfig(cfg, { authUrl: 'http://127.0.0.1:8790/internal/mtx-auth/s"x', record: false });
+  it('checks publishers through apps/live and keeps read/API on localhost', () => {
+    expect(y).toContain('authHTTPAddress: "http://127.0.0.1:8790/internal/mtx-auth/s\\"x"');
+    expect(y).not.toContain('very-long-pass');
+    expect(y).toContain('record: no');
     expect(y).toContain('apiAddress: 127.0.0.1:9997');
     expect(y).toContain('rtspAddress: 127.0.0.1:8554');
     expect(y).toContain('hls: no');

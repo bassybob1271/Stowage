@@ -44,7 +44,9 @@ const schema = z.object({
   /** open = anyone can sign up; closed = only existing accounts. */
   BOX_SIGNUP: z.enum(['open', 'closed']).default('open'),
   /** Bazzy TV video site, linked from the BazzyBox website. Empty hides the link. */
+  /** The other two Bazzy sites, linked from the BazzyBox website and app (empty hides a link). */
   BAZZY_TV_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://video.bazzy.tv'),
+  BAZZY_LIVE_URL: z.string().url().optional().or(z.literal('').transform(() => undefined)).default('https://live.bazzy.tv'),
   /**
    * "Sign in with Bazzy TV": the Bazzy TV website (bazzy-video) is the login provider.
    * Register BazzyBox in Bazzy TV's OAUTH_CLIENTS with redirect URI {APP_ORIGIN}/api/auth/bazzy/callback.

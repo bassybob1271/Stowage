@@ -56,6 +56,25 @@ Ingest listens on `127.0.0.1` by default. To publish from another machine on you
 | `LIVE_INGEST_HOST` | `127.0.0.1` | `0.0.0.0` for LAN publishers |
 | `LIVE_PORT` | `8790` | HTTP for the tunnel |
 | `LIVE_PUBLIC_URL`, `LIVE_TITLE` | | shown in the UI |
+| `LIVE_TV_URL`, `LIVE_BOX_URL` | `https://bazzyvideo.com`, `https://box.bazzy.io` | header links (empty hides) |
+| `LIVE_BAZZY_*`, `LIVE_SESSION_SECRET`, `LIVE_CREATOR_ROLES` | | sign-in (above) |
+| `LIVE_RECORD`, `LIVE_B2_*` | `false` | recordings (above) |
+
+## Sign in with Bazzy TV and personal stream keys
+
+Creators open **/studio** (the red "Go live" button), sign in with their Bazzy TV account (email, Google or Apple) and get a channel `live/<handle>` with their own stream key, shown with copy buttons in OBS format. Only Bazzy TV accounts with a role in `LIVE_CREATOR_ROLES` (default `filmmaker,admin`) can go live. A key works only for its own channel, and "Reset stream key" makes a new one.
+
+MediaMTX checks every publish through apps/live (`authMethod: http`, a random per-start secret URL that the tunnel never reaches). The station login `LIVE_PUBLISH_USER`/`LIVE_PUBLISH_PASS` still works on any path. Keys are stored AES-GCM encrypted in `data/state.json`.
+
+Setup: set `LIVE_BAZZY_AUTH_URL`, `LIVE_BAZZY_CLIENT_SECRET` and `LIVE_SESSION_SECRET`, then add `bazzylive` to Bazzy TV's `OAUTH_CLIENTS` with redirect `https://live.bazzy.io/auth/bazzy/callback`.
+
+## Recordings and replay (Backblaze B2)
+
+With `LIVE_RECORD=true`, MediaMTX records each show's original feed (fragmented MP4, split every `LIVE_RECORD_SEGMENT`). About a minute after a show ends, it's uploaded to the `bazzylive` B2 bucket (Backblaze names are case-insensitive, but its S3 API only accepts lowercase) (`LIVE_B2_*`), the local copy is removed, and it appears under **Past shows** on the home page, the channel page and the creator's Studio, at `/replay/<id>`. Replays play straight from B2 through short-lived signed links, so they don't use the Mac's upload bandwidth. Creators can delete their own recordings. Shows shorter than 10 s are dropped. Without the `LIVE_B2_*` settings, recordings stay in `data/recordings` and are served from this machine.
+
+## Running on the Mac mini
+
+`bash deploy/mac-mini/setup.sh` installs everything, reuses or creates the Cloudflare tunnel, routes `live.bazzy.io` and `box.bazzy.io`, and starts Live, BazzyBox and the tunnel at login (launchd). Copy the `.env` files and `~/.cloudflared` tunnel files from the old Mac first; the script explains what's missing.
 
 ## Notes
 
