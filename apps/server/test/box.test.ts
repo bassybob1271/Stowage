@@ -265,6 +265,7 @@ describe('public website', () => {
     expect(html).toContain('<title>BazzyBox</title>');
     expect(html).toContain('$14.99'); // Flex price comes from pricing.ts
     expect(html).toContain('BazzyBox Lite');
+    expect(html).toContain('Mazzy');
     expect(html).toContain('href="/signup"');
     expect(html).toContain('https://video.bazzy.tv'); // link back to Bazzy TV
     expect(r.headers.get('content-security-policy')).toContain("script-src 'self'");

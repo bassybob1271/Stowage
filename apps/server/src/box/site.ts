@@ -179,7 +179,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       <a class="btn go" href="${ctaHref}">${o.signupOpen ? `Start with ${freeLabel} free` : 'Sign in'}</a>
       <a class="btn" href="#pricing">See pricing</a>
     </div>
-    <p class="small">From Bazzy TV. No card needed for the free plan.</p>
+    <p class="small">From Bazzy TV. No card needed for the free plan. Every plan includes <a href="#player">Mazzy</a>, the media player for your songs and videos.</p>
   </div>
   <div class="calc" id="calc" data-lite="${lite.priceCredits}" data-lincl="${liteTb}" data-lover="${lite.overageCreditsPerTbMonth ?? 0}" data-flex="${flex.priceCredits}" data-incl="${flexTb}" data-over="${flex.overageCreditsPerTbMonth ?? 0}" data-studio="${studio.priceCredits}" data-sincl="${studioTb}" data-sover="${studio.overageCreditsPerTbMonth ?? 0}">
     <label for="tb">How much do you keep in the cloud? <b id="tbv">2 TB</b></label>
@@ -206,7 +206,20 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 </div>
 </section>
 
-<section class="band" id="pricing">
+<section class="band" id="player">
+<div class="wrap">
+  <h2>Mazzy, the media player for Bazzy. Free on every plan.</h2>
+  <p class="mute">Your songs and videos play right in BazzyBox, Free plan included. No downloading first, no extra app, no add-on to pay for.</p>
+  <div class="promise">
+    <div class="card"><span class="k">Songs</span><h3>A real music player</h3><p>Waveform scrubbing, the folder as a playlist, a queue, shuffle and repeat, and volume and mute. The mini-player keeps the music going while you browse.</p></div>
+    <div class="card"><span class="k">Video</span><h3>Stream, don't download</h3><p>Scrub straight to any moment, change the playback speed, pop out picture-in-picture, and turn on subtitles from an .srt or .vtt file next to the video.</p></div>
+    <div class="card"><span class="k">1:36</span><h3>Notes pinned to the moment</h3><p>Pause and write "raise the vocal here": the note is pinned to that second on the timeline. Click a pin to jump back, reply, and tick it off when it's done.</p></div>
+    <div class="card"><span class="k">Share</span><h3>Review links and playlists</h3><p>Send a review link and collaborators can play the file and leave timed notes without an account. Or build a playlist with a cover picture and share one link.</p></div>
+  </div>
+</div>
+</section>
+
+<section class="band alt" id="pricing">
 <div class="wrap">
   <h2>Four plans and a wallet</h2>
   <p class="mute">Everything is paid in credits. 1 credit is one cent, and credits never expire.</p>
@@ -216,7 +229,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       <div class="price">$0</div>
       <ul>
         <li>${freeLabel} of storage</li>
-        <li>Previews and playback for video, audio, images and PDFs</li>
+        <li>The Mazzy media player for songs and video, plus previews for images and PDFs</li>
         <li>2 GB of share-link downloads a month</li>
       </ul>
       <a class="btn" href="${ctaHref}">${cta}</a>
@@ -260,14 +273,14 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 </div>
 </section>
 
-<section class="band alt">
+<section class="band">
 <div class="wrap two">
   <div>
     <h2>Built for big media files</h2>
     <p class="mute">Sessions, stems, RAW footage and masters, kept in one private space on Backblaze B2's always-hot cloud storage.</p>
     <ul>
       <li><b>Resumable uploads.</b> Multi-gigabyte files survive a dropped connection or a closed laptop.</li>
-      <li><b>Play before you download.</b> Scrub video, audition mixes on a waveform player, page through PDFs.</li>
+      <li><b>Play before you download.</b> The <a href="#player">Mazzy media player</a> scrubs video and auditions mixes on a waveform, free on every plan. PDFs page through in the browser.</li>
       <li><b>Send to clients.</b> Share links with Range support for streaming, ${sendGb}/GB past your allowance, compared with $0.25/GB on MASV.</li>
       <li><b>Playlist Maker.</b> Pick mixes, stems or video, add a cover picture and send one link to a player page anyone can open.</li>
       <li><b>Bring your Dropbox.</b> Connect once, tick the folders, and BazzyBox copies them over in the background. Nothing in your Dropbox changes.</li>
@@ -285,6 +298,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
         <tr><td>Downgrade</td><td>End of billing cycle</td><td class="us">Same day, credit back</td></tr>
         <tr><td>Extra space</td><td>Next plan up</td><td class="us">${overTb}/TB, by the day</td></tr>
         <tr><td>Big file sends</td><td>Plan limits</td><td class="us">${sendGb}/GB past ${sendFreeGb} GB</td></tr>
+        <tr><td>Music and video player</td><td>Basic preview</td><td class="us">Mazzy media player, timed notes, free</td></tr>
         <tr><td>Free plan</td><td class="n">2 GB</td><td class="n us">${freeLabel}</td></tr>
       </tbody>
     </table></div>
@@ -292,7 +306,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 </div>
 </section>
 
-<section class="band" id="faq">
+<section class="band alt" id="faq">
 <div class="wrap">
   <h2>Questions</h2>
   <details><summary>What happens if I downgrade in the middle of a month?</summary><p>The change happens immediately. The days you already paid for and didn't use go back to your wallet as credits, so you can come back to Flex later without paying twice.</p></details>
