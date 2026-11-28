@@ -34,8 +34,14 @@ export interface SiteOptions {
 
 export function siteHtml(o: SiteOptions): string {
   const p = plans(o.freeGb);
+  const lite = p.lite;
   const flex = p.flex;
   const studio = p.studio;
+  const liteTb = lite.includedBytes / 1e12;
+  const litePrice = usd(lite.priceCredits);
+  const liteSendGb = lite.sendFreeBytes / 1e9;
+  /** From how many TB Studio costs less than Flex plus extra space. */
+  const studioFromTb = Math.ceil(flex.includedBytes / 1e12 + (studio.priceCredits - flex.priceCredits) / (flex.overageCreditsPerTbMonth ?? 1));
   const studioTb = studio.includedBytes / 1e12;
   const studioPrice = usd(studio.priceCredits);
   const studioOver = usd(studio.overageCreditsPerTbMonth ?? 0);
@@ -63,7 +69,7 @@ export function siteHtml(o: SiteOptions): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>BazzyBox</title>
-<meta name="description" content="Cloud storage for filmmakers and musicians, from Bazzy TV. ${flexTb} TB for ${flexPrice}, ${studioTb} TB for ${studioPrice}. Downgrade any day, keep your files.">
+<meta name="description" content="Cloud storage for filmmakers and musicians, from Bazzy TV. ${liteTb} TB for ${litePrice}, ${flexTb} TB for ${flexPrice}, ${studioTb} TB for ${studioPrice}. Downgrade any day, keep your files.">
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&display=swap" rel="stylesheet">
@@ -168,20 +174,20 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 <div class="wrap hero">
   <div>
     <h1>Storage for filmmakers and musicians that lets you go.</h1>
-    <p class="lede">${flexTb} TB for ${flexPrice} a month. Pay for the space you keep, change plans any day, and never lose a file because you downgraded.</p>
+    <p class="lede">${liteTb} TB for ${litePrice} a month, ${flexTb} TB for ${flexPrice}. Pay for the space you keep, change plans any day, and never lose a file because you downgraded.</p>
     <div class="ctas">
       <a class="btn go" href="${ctaHref}">${o.signupOpen ? `Start with ${freeLabel} free` : 'Sign in'}</a>
       <a class="btn" href="#pricing">See pricing</a>
     </div>
     <p class="small">From Bazzy TV. No card needed for the free plan.</p>
   </div>
-  <div class="calc" id="calc" data-flex="${flex.priceCredits}" data-incl="${flexTb}" data-over="${flex.overageCreditsPerTbMonth ?? 0}" data-studio="${studio.priceCredits}" data-sincl="${studioTb}" data-sover="${studio.overageCreditsPerTbMonth ?? 0}">
+  <div class="calc" id="calc" data-lite="${lite.priceCredits}" data-lincl="${liteTb}" data-lover="${lite.overageCreditsPerTbMonth ?? 0}" data-flex="${flex.priceCredits}" data-incl="${flexTb}" data-over="${flex.overageCreditsPerTbMonth ?? 0}" data-studio="${studio.priceCredits}" data-sincl="${studioTb}" data-sover="${studio.overageCreditsPerTbMonth ?? 0}">
     <label for="tb">How much do you keep in the cloud? <b id="tbv">2 TB</b></label>
-    <input id="tb" type="range" min="2" max="20" step="1" value="2" aria-describedby="plan" aria-valuetext="2 TB">
+    <input id="tb" type="range" min="1" max="20" step="1" value="2" aria-describedby="plan" aria-valuetext="2 TB">
     <div class="bill"><span>Dropbox</span><div class="trk"><div class="fill" id="fd" style="width:100%"></div></div><b id="vd">$11.99</b></div>
-    <div class="bill us"><span>BazzyBox</span><div class="trk"><div class="fill" id="fb" style="width:83%"></div></div><b id="vb">${flexPrice}</b></div>
+    <div class="bill us"><span>BazzyBox</span><div class="trk"><div class="fill" id="fb" style="width:83%"></div></div><b id="vb">${usd(Math.min(flex.priceCredits, lite.priceCredits + (lite.overageCreditsPerTbMonth ?? 0)))}</b></div>
     <div class="save"><span class="mute">You save each year</span><b id="sv">$24</b></div>
-    <p class="plan" id="plan">Dropbox Plus, 2 TB · BazzyBox Flex, ${flexTb} TB included</p>
+    <p class="plan" id="plan">Dropbox Plus, 2 TB · BazzyBox Lite, ${liteTb} TB + 1 TB extra</p>
     <p class="plan">Dropbox monthly list prices, November 2026. Team plans need 3 seats; Advanced adds 5 TB per seat.</p>
   </div>
 </div>
@@ -202,7 +208,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 
 <section class="band" id="pricing">
 <div class="wrap">
-  <h2>Three plans and a wallet</h2>
+  <h2>Four plans and a wallet</h2>
   <p class="mute">Everything is paid in credits. 1 credit is one cent, and credits never expire.</p>
   <div class="tiers">
     <div class="tier">
@@ -215,11 +221,22 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       </ul>
       <a class="btn" href="${ctaHref}">${cta}</a>
     </div>
+    <div class="tier">
+      <h3>BazzyBox Lite</h3>
+      <div class="price">${litePrice} <small>per 30 days</small></div>
+      <ul>
+        <li><b>${liteTb} TB</b> included, then ${usd(lite.overageCreditsPerTbMonth ?? 0)} per TB-month, charged daily</li>
+        <li>${liteSendGb} GB of share-link downloads a month, then ${sendGb}/GB</li>
+        <li>For a few projects, a demo reel or a catalog of mixes</li>
+        <li>Same any-day switching: unused days come back as credits</li>
+      </ul>
+      <a class="btn" href="${ctaHref}">${o.signupOpen ? 'Get Lite' : 'Sign in'}</a>
+    </div>
     <div class="tier main">
       <h3>BazzyBox Flex</h3>
       <div class="price">${flexPrice} <small>per 30 days</small></div>
       <ul>
-        <li><b>${flexTb} TB</b> included, then ${overTb} per TB-month, charged daily (Studio is cheaper from 11 TB up)</li>
+        <li><b>${flexTb} TB</b> included, then ${overTb} per TB-month, charged daily (Studio is cheaper from ${studioFromTb} TB up)</li>
         <li>${sendFreeGb} GB of share-link downloads a month, then ${sendGb}/GB</li>
         <li>Change plans or cancel any day, unused days refunded as credits</li>
         <li>Renews from your wallet, never a surprise card charge</li>
@@ -253,6 +270,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       <li><b>Play before you download.</b> Scrub video, audition mixes on a waveform player, page through PDFs.</li>
       <li><b>Send to clients.</b> Share links with Range support for streaming, ${sendGb}/GB past your allowance, compared with $0.25/GB on MASV.</li>
       <li><b>Playlist Maker.</b> Pick mixes, stems or video, add a cover picture and send one link to a player page anyone can open.</li>
+      <li><b>Bring your Dropbox.</b> Connect once, tick the folders, and BazzyBox copies them over in the background. Nothing in your Dropbox changes.</li>
       <li><b>Next: publish to Bazzy TV.</b> Send a finished cut from your box straight to your channel. Coming soon.</li>
     </ul>
   </div>
@@ -261,6 +279,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
     <div class="scroll"><table>
       <thead><tr><th></th><th>Dropbox</th><th>BazzyBox</th></tr></thead>
       <tbody>
+        <tr><td>1 TB</td><td class="n">$11.99/mo (2 TB is the smallest)</td><td class="n us">${litePrice}/mo</td></tr>
         <tr><td>3 TB, one person</td><td class="n">$19.99/mo</td><td class="n us">${flexPrice}/mo</td></tr>
         <tr><td>15 TB</td><td class="n">$90/mo (3 seats)</td><td class="n us">${studioPrice}/mo</td></tr>
         <tr><td>Downgrade</td><td>End of billing cycle</td><td class="us">Same day, credit back</td></tr>
@@ -301,6 +320,7 @@ export const siteJs = String.raw`
   if (!el) return;
   const d = el.dataset;
   const plans = [
+    ['Lite', Number(d.lite) / 100, Number(d.lincl), Number(d.lover) / 100],
     ['Flex', Number(d.flex) / 100, Number(d.incl), Number(d.over) / 100],
     ['Studio', Number(d.studio) / 100, Number(d.sincl), Number(d.sover) / 100],
   ];

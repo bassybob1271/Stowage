@@ -4,14 +4,15 @@ BazzyBox is Stowage running with `BAZZYBOX=true`: a cheaper, no-lock-in alternat
 
 ## Pricing
 
-| | Free | Flex | Studio |
-|---|---|---|---|
-| Price | $0 | **$9.99 per 30 days** (999 credits) | **$79.99 per 30 days** (7,999 credits) |
-| Included storage | 10 GB | **3 TB** | **15 TB** |
-| Past the included space | Uploads stop | **$9.50 per TB-month**, charged daily | **$6 per TB-month**, charged daily |
-| Share-link downloads | 2 GB/month | 50 GB/month, then **$0.04/GB** | 250 GB/month, then **$0.04/GB** |
+| | Free | Lite | Flex | Studio |
+|---|---|---|---|---|
+| Price | $0 | **$4.99 per 30 days** (499 credits) | **$14.99 per 30 days** (1,499 credits) | **$79.99 per 30 days** (7,999 credits) |
+| Included storage | 10 GB | **1 TB** | **3 TB** | **15 TB** |
+| Past the included space | Uploads stop | **$9.50 per TB-month**, charged daily | **$9.50 per TB-month**, charged daily | **$9.50 per TB-month**, charged daily |
+| Share-link downloads | 2 GB/month | 10 GB/month, then **$0.04/GB** | 50 GB/month, then **$0.04/GB** | 250 GB/month, then **$0.04/GB** |
+| Pays for its own B2 storage until members average | — | 71.8% full | 71.9% full | 76.7% full |
 
-**Studio** keeps heavy users below Dropbox up to 20 TB. Flex's $9.50/TB overtakes Dropbox Advanced ($90 for 15 TB on 3 seats, $120 for 20 TB on 4) at 12 TB, and Studio is the cheaper BazzyBox plan from 11 TB. **On B2, Studio loses money on full accounts.** At $6.95/TB with 10% overhead for versions and trash, a full 15 TB costs about $115/month to host against $79.99, and each extra TB at $6 is sold under B2's own $6.95. Studio breaks even when its customers average about 10 TB stored. Before selling it widely, either raise the extra-TB price to at least $9, or keep Studio users' files on cheaper storage. Switching between paid plans credits the unused days of the old plan first, and a switch the wallet can't cover changes nothing.
+**The "balanced" price set (Nov 27 2026).** Every plan covers its Backblaze B2 storage ($6.95/TB-month) until its members fill about three quarters of it on average, and extra space at $9.50/TB always earns $2.55/TB over B2. BazzyBox stays cheaper than Dropbox at 1 TB (Dropbox's smallest is Plus, 2 TB for $11.99), 3 TB (Professional, $19.99) and 15 TB (Advanced, 3 seats, $90); at 2 TB Dropbox Plus is cheaper. The pitch isn't the lowest price at every size: it's that Dropbox never lets anyone downgrade or leave cheaply, and BazzyBox does (change plans any day with unused days refunded, free exports, and a Dropbox importer to get in). Earlier prices were Flex $9.99 for 3 TB and Studio extra at $6/TB, which lost money on members past about half full. The working numbers are in the "BazzyBox plans vs Backblaze B2 cost" sheet. Switching between paid plans credits the unused days of the old plan first, and a switch the wallet can't cover changes nothing.
 
 **Credits wallet.** 1 credit = $0.01. Packs: $10 → 1,000 · $25 → 2,600 (+4%) · $50 → 5,300 (+6%) · $100 → 11,000 (+10%). Credits don't expire. Plan fees, extra storage and paid sends come out of the wallet.
 

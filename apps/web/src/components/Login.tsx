@@ -110,7 +110,7 @@ function BoxLogin({ onSuccess, onOwner, bazzy }: { onSuccess: () => void; onOwne
           <span className="text-lg font-semibold tracking-tight">BazzyBox</span>
         </div>
         <p className="text-sm text-muted text-center mb-2">
-          Storage for filmmakers and musicians. 3 TB for $9.99, downgrade any day.
+          Storage for filmmakers and musicians. 1 TB for $4.99, downgrade any day.
         </p>
         {bazzy && (
           <>

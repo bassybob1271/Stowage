@@ -24,7 +24,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const enc = (p: string) => encodeURIComponent(p);
 
-export type BoxPlanId = 'free' | 'flex' | 'studio';
+export type BoxPlanId = 'free' | 'lite' | 'flex' | 'studio';
 
 export interface Session {
   authenticated: boolean;

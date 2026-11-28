@@ -192,9 +192,9 @@ describe('one Bazzy wallet', () => {
     expect(up.status).toBe(200);
     const after = await me(cookie);
     expect(after.plan.id).toBe('flex');
-    expect(tvWallet.get('bz-w1')).toBe(1500 - 999);
-    expect(after.wallet.credits).toBe(1500 - 999);
-    expect(tvStatement.at(-1)).toMatchObject({ sub: 'bz-w1', credits: -999 });
+    expect(tvWallet.get('bz-w1')).toBe(1500 - 1499);
+    expect(after.wallet.credits).toBe(1500 - 1499);
+    expect(tvStatement.at(-1)).toMatchObject({ sub: 'bz-w1', credits: -1499 });
   });
 
   it('moves an old Box-only balance into the Bazzy wallet on first Bazzy TV sign-in', async () => {

@@ -76,7 +76,7 @@ describe('pricing', () => {
   it('refunds unused days on downgrade', () => {
     const start = 0;
     const end = 30 * DAY_MS;
-    expect(proratedRefundMc(p.flex, start, end, 15 * DAY_MS)).toBe(499_500);
+    expect(proratedRefundMc(p.flex, start, end, 15 * DAY_MS)).toBe(749_500);
     expect(proratedRefundMc(p.flex, start, end, end)).toBe(0);
   });
   it('bills sends past the free allowance', () => {
@@ -141,23 +141,25 @@ describe('quota, plans and credits', () => {
   });
 
   it('upgrades from the wallet and refunds unused days on downgrade', async () => {
-    expect((await alice('/api/box/plan', { method: 'POST', headers: json, body: JSON.stringify({ plan: 'flex' }) })).status).toBe(402);
+    expect((await alice('/api/box/plan', { method: 'POST', headers: json, body: JSON.stringify({ plan: 'lite' }) })).status).toBe(402);
     const top = (await (await alice('/api/box/credits', { method: 'POST', headers: json, body: JSON.stringify({ pack: 'p10' }) })).json()) as { wallet: { credits: number } };
     expect(top.wallet.credits).toBe(1000);
-    const up = (await (await alice('/api/box/plan', { method: 'POST', headers: json, body: JSON.stringify({ plan: 'flex' }) })).json()) as {
+    // $10 doesn't reach Flex ($14.99) but covers Lite ($4.99).
+    expect((await alice('/api/box/plan', { method: 'POST', headers: json, body: JSON.stringify({ plan: 'flex' }) })).status).toBe(402);
+    const up = (await (await alice('/api/box/plan', { method: 'POST', headers: json, body: JSON.stringify({ plan: 'lite' }) })).json()) as {
       plan: { id: string; includedBytes: number };
       wallet: { credits: number };
     };
-    expect(up.plan.id).toBe('flex');
-    expect(up.plan.includedBytes).toBe(3 * TB);
-    expect(up.wallet.credits).toBe(1);
+    expect(up.plan.id).toBe('lite');
+    expect(up.plan.includedBytes).toBe(1 * TB);
+    expect(up.wallet.credits).toBe(501);
     const down = (await (await alice('/api/box/plan', { method: 'POST', headers: json, body: JSON.stringify({ plan: 'free' }) })).json()) as {
       plan: { id: string };
       wallet: { credits: number };
       history: { kind: string }[];
     };
     expect(down.plan.id).toBe('free');
-    expect(down.wallet.credits).toBeGreaterThan(999);
+    expect(down.wallet.credits).toBeGreaterThan(990); // 501 + nearly all of Lite's 499 back
     expect(down.history[0]!.kind).toBe('refund');
   });
 
@@ -198,30 +200,30 @@ describe('meter and renewals', () => {
     const box = new BoxService(cfg, db, ctx.mounts, () => clock);
     const a = await box.signup('carol@example.com', 'correct horse battery');
     await box.ledger(a.id, 1_500_000, 'topup', 'test');
-    await box.changePlan(a.id, 'flex'); // wallet 1500 - 999 = 501 credits
+    await box.changePlan(a.id, 'flex'); // wallet 1500 - 1499 = 1 credit
     await box.mountFor(a.id).adapter.write('keep.txt', new Blob(['hi']).stream(), {});
     clock += 31 * DAY_MS;
     await box.meter(a.id);
     let s = await box.summary(a.id);
-    expect(s.plan.id).toBe('free'); // 501 credits can't pay 999
+    expect(s.plan.id).toBe('free'); // 1 credit can't pay 1499
     expect(s.history.some((h) => h.note.includes('moved to Free'))).toBe(true);
     expect(await box.mountFor(a.id).adapter.stat('keep.txt')).not.toBeNull();
-    await box.ledger(a.id, 2_000_000, 'topup', 'test');
+    await box.ledger(a.id, 3_000_000, 'topup', 'test');
     await box.changePlan(a.id, 'flex');
     clock += 30 * DAY_MS;
     await box.meter(a.id);
     s = await box.summary(a.id);
     expect(s.plan.id).toBe('flex');
-    expect(s.wallet.credits).toBeCloseTo(2501 - 999 * 2, 0);
+    expect(s.wallet.credits).toBeCloseTo(3001 - 1499 * 2, 0);
   });
 });
 
 describe('Studio plan', () => {
-  it('prices Studio at $79.99 for 15 TB, then $6 per TB-month', () => {
+  it('prices Studio at $79.99 for 15 TB, then $9.50 per TB-month (above B2\'s $6.95)', () => {
     const s = plans().studio;
     expect(s.priceCredits).toBe(7999);
     expect(s.includedBytes).toBe(15 * TB);
-    expect(dailyOverageMc(s, 5 * TB) * 30).toBeCloseTo(5 * 600 * 1000, -2);
+    expect(dailyOverageMc(s, 5 * TB) * 30).toBeCloseTo(5 * 950 * 1000, -2);
   });
 
   it('refuses a switch the wallet cannot cover and leaves plan and wallet untouched', async () => {
@@ -229,12 +231,12 @@ describe('Studio plan', () => {
     const box = new BoxService(cfg, db, ctx.mounts, () => clock);
     const a = await box.signup('dana@example.com', 'correct horse battery');
     await box.ledger(a.id, 7_999_000, 'topup', 'test');
-    await box.changePlan(a.id, 'flex'); // wallet 7,000
-    clock += 15 * DAY_MS; // ~499 unused Flex credits: 7,499 < 7,999
+    await box.changePlan(a.id, 'flex'); // wallet 6,500
+    clock += 15 * DAY_MS; // ~749.5 unused Flex credits: 7,249.5 < 7,999
     await expect(box.changePlan(a.id, 'studio')).rejects.toMatchObject({ status: 402 });
     const s = await box.summary(a.id);
     expect(s.plan.id).toBe('flex');
-    expect(s.wallet.credits).toBe(7000);
+    expect(s.wallet.credits).toBe(6500);
     expect(s.history.some((h) => h.kind === 'refund')).toBe(false);
   });
 
@@ -242,15 +244,15 @@ describe('Studio plan', () => {
     let clock = Date.now();
     const box = new BoxService(cfg, db, ctx.mounts, () => clock);
     const a = await box.signup('erin@example.com', 'correct horse battery');
-    await box.ledger(a.id, 8_600_000, 'topup', 'test');
-    await box.changePlan(a.id, 'flex'); // wallet 7,601
+    await box.ledger(a.id, 9_400_000, 'topup', 'test');
+    await box.changePlan(a.id, 'flex'); // wallet 7,901
     clock += 15 * DAY_MS;
     await box.changePlan(a.id, 'studio');
     const s = await box.summary(a.id);
     expect(s.plan.id).toBe('studio');
     expect(s.plan.includedBytes).toBe(15 * TB);
-    // 7,601 + 499.5 unused Flex days - 7,999 Studio
-    expect(s.wallet.credits).toBeCloseTo(7601 + 999 / 2 - 7999, 0);
+    // 7,901 + 749.5 unused Flex days - 7,999 Studio
+    expect(s.wallet.credits).toBeCloseTo(7901 + 1499 / 2 - 7999, 0);
     expect(s.history.map((h) => h.kind).slice(0, 2)).toEqual(['plan', 'refund']);
   });
 });
@@ -261,7 +263,8 @@ describe('public website', () => {
     expect(r.status).toBe(200);
     const html = await r.text();
     expect(html).toContain('<title>BazzyBox</title>');
-    expect(html).toContain('$9.99'); // Flex price comes from pricing.ts
+    expect(html).toContain('$14.99'); // Flex price comes from pricing.ts
+    expect(html).toContain('BazzyBox Lite');
     expect(html).toContain('href="/signup"');
     expect(html).toContain('https://video.bazzy.tv'); // link back to Bazzy TV
     expect(r.headers.get('content-security-policy')).toContain("script-src 'self'");

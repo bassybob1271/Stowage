@@ -70,7 +70,7 @@ export function Billing({ onClose }: { onClose: () => void }) {
           <div className="p-4 flex flex-col gap-6 text-sm">
             <Meter s={s} />
 
-            <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {s.plans.map((p) => {
                 const current = s.plan.id === p.id;
                 return (

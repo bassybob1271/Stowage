@@ -213,7 +213,7 @@ export class BoxService {
     if (after <= plan.includedBytes) return; // inside the plan: no need to ask the wallet
     if (after <= allowedBytes(plan, await this.walletMcOf(a))) return;
     if (plan.overageCreditsPerTbMonth === null)
-      throw new BoxError(507, `This upload would pass your ${fmtBytes(plan.includedBytes)} free space. Upgrade to Flex for 3 TB or Studio for 15 TB.`, 'quota');
+      throw new BoxError(507, `This upload would pass your ${fmtBytes(plan.includedBytes)} free space. Upgrade to Lite for 1 TB, Flex for 3 TB or Studio for 15 TB.`, 'quota');
     throw new BoxError(402, `Add credits to store past ${fmtBytes(plan.includedBytes)}: your wallet must cover a week of the extra space.`, 'wallet');
   }
 
