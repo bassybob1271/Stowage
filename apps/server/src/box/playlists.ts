@@ -1,5 +1,5 @@
 /**
- * BazzyBox Playlist Maker.
+ * Mazzy, BazzyBox's playlist maker.
  *
  * Owners build playlists from audio and video in their own folder, add a cover picture and
  * share one public link. The link opens a player page (/p/:token) anyone can use; streamed
@@ -410,7 +410,7 @@ function playerHtml(p: { title: string; description: string; items: string; cove
   </header>
   <div class="stage" id="stage" hidden><video id="video" playsinline controls></video></div>
   ${items.length ? `<ol id="list">${tracks}</ol>` : '<p class="desc" style="margin-top:32px">This playlist is empty.</p>'}
-  <p class="foot">Made with <a href="/">BazzyBox Playlist Maker</a></p>
+  <p class="foot">Made with <a href="/">Mazzy</a> on BazzyBox</p>
 </div>
 <div class="bar" id="bar" hidden>
   <div class="in">

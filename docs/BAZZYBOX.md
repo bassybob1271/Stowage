@@ -14,7 +14,7 @@ BazzyBox is Stowage running with `BAZZYBOX=true`: a cheaper, no-lock-in alternat
 
 **The "balanced" price set (Nov 27 2026).** Every plan covers its Backblaze B2 storage ($6.95/TB-month) until its members fill about three quarters of it on average, and extra space at $9.50/TB always earns $2.55/TB over B2. BazzyBox stays cheaper than Dropbox at 1 TB (Dropbox's smallest is Plus, 2 TB for $11.99), 3 TB (Professional, $19.99) and 15 TB (Advanced, 3 seats, $90); at 2 TB Dropbox Plus is cheaper. The pitch isn't the lowest price at every size: it's that Dropbox never lets anyone downgrade or leave cheaply, and BazzyBox does (change plans any day with unused days refunded, free exports, and a Dropbox importer to get in). Earlier prices were Flex $9.99 for 3 TB and Studio extra at $6/TB, which lost money on members past about half full. The working numbers are in the "BazzyBox plans vs Backblaze B2 cost" sheet. Switching between paid plans credits the unused days of the old plan first, and a switch the wallet can't cover changes nothing.
 
-**Mazzy, the media player for Bazzy,** comes free with every plan, Free included: waveform audio with the folder as a playlist, queue, shuffle/repeat, volume and mute, and a mini-player that keeps playing while browsing; video streaming with speed, picture-in-picture and subtitles; timed comments; review links; and Playlist Maker. It's a selling point, not a paid add-on: demo playlists for musicians, and dailies with timed notes for filmmakers.
+**Mazzy, the media player for Bazzy,** comes free with every plan, Free included: waveform audio with the folder as a playlist, queue, shuffle/repeat, volume and mute, and a mini-player that keeps playing while browsing; video streaming with speed, picture-in-picture and subtitles; timed comments; review links; and its playlist maker. It's a selling point, not a paid add-on: demo playlists for musicians, and dailies with timed notes for filmmakers.
 
 **Credits wallet.** 1 credit = $0.01. Packs: $10 → 1,000 · $25 → 2,600 (+4%) · $50 → 5,300 (+6%) · $100 → 11,000 (+10%). Credits don't expire. Plan fees, extra storage and paid sends come out of the wallet.
 
@@ -52,9 +52,9 @@ The Bazzy TV video page (`apps/live`, live.bazzy.io) links to it from its header
 
 Uploads go in 8 MB resumable chunks, under Cloudflare's 100 MB request limit. Large downloads and share links through a free or Pro Cloudflare plan carry the same caveat as live video: fine for a modest audience, but heavy public traffic may need a paid plan or direct presigned B2 links (`DIRECT_TRANSFER=true`).
 
-## Playlist Maker
+## Mazzy (playlists)
 
-The **Playlist Maker** button sits in the BazzyBox header and at the top of the sidebar. A playlist is an ordered list of audio and video files from the owner's own folder (any audio, plus video browsers play: MP4, M4V, WebM, MOV, OGV), with a name, an optional description and a cover picture. Pictures are resized in the browser to 1200 px JPEG, and the server accepts only real JPEG, PNG or WebP up to 1.5 MB.
+The **Mazzy** button sits in the BazzyBox header and at the top of the sidebar. A playlist is an ordered list of audio and video files from the owner's own folder (any audio, plus video browsers play: MP4, M4V, WebM, MOV, OGV), with a name, an optional description and a cover picture. Pictures are resized in the browser to 1200 px JPEG, and the server accepts only real JPEG, PNG or WebP up to 1.5 MB.
 
 **Create share link** makes one public page at `/p/<token>`:
 - **The page:** cover, title, track list, Play and Shuffle, audio in a bottom bar and video inline. It carries Open Graph tags, so links unfurl with the cover in Messages, Slack and social apps.

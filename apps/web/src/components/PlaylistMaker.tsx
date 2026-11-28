@@ -48,7 +48,7 @@ function Cover({ p, size = 'full' }: { p: Pick<Playlist, 'coverUrl' | 'title'>; 
   );
 }
 
-/** BazzyBox Playlist Maker: playlists of your audio and video, with a cover picture and a public link. */
+/** Mazzy, BazzyBox's playlist maker: playlists of your audio and video, with a cover picture and a public link. */
 export function PlaylistMaker({ mount, onClose, initialId = null }: { mount: string; onClose: () => void; initialId?: string | null }) {
   const [openId, setOpenId] = useState<string | null>(initialId);
   const qc = useQueryClient();
@@ -73,7 +73,7 @@ export function PlaylistMaker({ mount, onClose, initialId = null }: { mount: str
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Playlist Maker"
+        aria-label="Mazzy playlists"
         className="w-full max-w-3xl h-full max-h-[min(860px,100%)] flex flex-col rounded-xl bg-panel border border-line shadow-2xl overflow-hidden"
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >
@@ -84,7 +84,7 @@ export function PlaylistMaker({ mount, onClose, initialId = null }: { mount: str
             </button>
           )}
           <ListMusic size={18} className="text-[#ff3d5a]" />
-          <h2 className="font-semibold flex-1">Playlist Maker</h2>
+          <h2 className="font-semibold flex-1">Mazzy <span className="font-normal text-muted">playlists</span></h2>
           {!openId && (
             <button className="btn btn-primary" onClick={() => void newPlaylist()} disabled={create.isPending}>
               <Plus size={16} /> New playlist

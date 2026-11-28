@@ -179,7 +179,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       <a class="btn go" href="${ctaHref}">${o.signupOpen ? `Start with ${freeLabel} free` : 'Sign in'}</a>
       <a class="btn" href="#pricing">See pricing</a>
     </div>
-    <p class="small">From Bazzy TV. No card needed for the free plan. Every plan includes <a href="#player">Mazzy</a>, the media player for your songs and videos.</p>
+    <p class="small">From Bazzy TV. No card needed for the free plan. Every plan includes <a href="#player">Mazzy</a>, the player and playlist maker for your songs and videos.</p>
   </div>
   <div class="calc" id="calc" data-lite="${lite.priceCredits}" data-lincl="${liteTb}" data-lover="${lite.overageCreditsPerTbMonth ?? 0}" data-flex="${flex.priceCredits}" data-incl="${flexTb}" data-over="${flex.overageCreditsPerTbMonth ?? 0}" data-studio="${studio.priceCredits}" data-sincl="${studioTb}" data-sover="${studio.overageCreditsPerTbMonth ?? 0}">
     <label for="tb">How much do you keep in the cloud? <b id="tbv">2 TB</b></label>
@@ -208,7 +208,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 
 <section class="band" id="player">
 <div class="wrap">
-  <h2>Mazzy, the media player for Bazzy. Free on every plan.</h2>
+  <h2>Mazzy, the media player and playlist maker for Bazzy. Free on every plan.</h2>
   <p class="mute">Your songs and videos play right in BazzyBox, Free plan included. No downloading first, no extra app, no add-on to pay for. Musicians send demo playlists to labels and collaborators; filmmakers share the day's dailies with the director and crew, who leave notes on the exact frame or bar.</p>
   <div class="promise">
     <div class="card"><span class="k">Songs</span><h3>A real music player</h3><p>Waveform scrubbing, the folder as a playlist, a queue, shuffle and repeat, and volume and mute. The mini-player keeps the music going while you browse.</p></div>
@@ -282,7 +282,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
       <li><b>Resumable uploads.</b> Multi-gigabyte files survive a dropped connection or a closed laptop.</li>
       <li><b>Play before you download.</b> The <a href="#player">Mazzy media player</a> scrubs video and auditions mixes on a waveform, free on every plan. PDFs page through in the browser.</li>
       <li><b>Send to clients.</b> Share links with Range support for streaming, ${sendGb}/GB past your allowance, compared with $0.25/GB on MASV.</li>
-      <li><b>Playlist Maker.</b> Pick mixes, stems or video, add a cover picture and send one link to a player page anyone can open.</li>
+      <li><b>Mazzy playlists.</b> Pick mixes, stems or video, add a cover picture and send one link to a player page anyone can open.</li>
       <li><b>Bring your Dropbox.</b> Connect once, tick the folders, and BazzyBox copies them over in the background. Nothing in your Dropbox changes.</li>
       <li><b>Next: publish to Bazzy TV.</b> Send a finished cut from your box straight to your channel. Coming soon.</li>
     </ul>

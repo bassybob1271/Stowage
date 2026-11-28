@@ -107,11 +107,11 @@ export function Shell({ account = false, sites }: { account?: boolean; sites?: {
             <button
               className="btn border-[#ff3d5a] text-[#ff3d5a] hover:bg-[#ff3d5a] hover:text-white"
               onClick={() => setPlaylists(true)}
-              title="Playlist Maker: share your music and video with one link"
-              aria-label="Playlist Maker"
+              title="Mazzy: make playlists of your music and video and share them with one link"
+              aria-label="Mazzy playlists"
             >
               <ListMusic size={16} />
-              <span className="hidden sm:inline">Playlist Maker</span>
+              <span className="hidden sm:inline">Mazzy</span>
             </button>
           )}
           <button className="btn btn-primary" disabled={!writable} onClick={() => fileInput.current?.click()} title={writable ? 'Upload files' : 'Mount is read-only'}>
@@ -219,7 +219,7 @@ function Sidebar({ mounts, loading, active, onPlaylists, sites }: { mounts: Moun
           className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#ff3d5a] text-white font-semibold text-left hover:brightness-110"
         >
           <ListMusic size={16} className="shrink-0" />
-          <span className="flex-1">Playlist Maker</span>
+          <span className="flex-1">Mazzy</span>
         </button>
       )}
       <section>

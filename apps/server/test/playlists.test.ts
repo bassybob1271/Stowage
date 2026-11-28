@@ -62,7 +62,7 @@ beforeAll(async () => {
   await put(bob.id, 'secret.mp3', 10);
 });
 
-describe('Playlist Maker', () => {
+describe('Mazzy playlists', () => {
   let pl: Pl;
 
   it('creates a playlist from the owner’s audio and video, in order, without duplicates', async () => {
