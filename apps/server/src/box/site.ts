@@ -130,8 +130,9 @@ input[type=range]{width:100%;height:44px;accent-color:var(--red);margin:4px 0 14
 .tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px;margin-top:20px}
 .tier{border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--panel)}
 .tier.main{border-color:var(--red)}
-.price{font-stretch:112%;font-weight:800;font-size:44px;line-height:1;margin:10px 0 4px;white-space:nowrap}
-.price small{font-size:16px;font-weight:600;color:var(--mute)}
+.price{font-stretch:112%;font-weight:800;font-size:clamp(34px,3.4vw,44px);line-height:1;margin:10px 0 4px}
+.price small{display:block;margin-top:6px;font-stretch:100%;font-size:15px;font-weight:600;color:var(--mute)}
+.tier{min-width:0}
 .tier ul{list-style:none;padding:0;margin:16px 0 20px}
 .tier li{padding:8px 0;border-top:1px solid var(--line);font-size:15px}
 .packs{list-style:none;padding:0;margin:14px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(9em,1fr));gap:10px}
