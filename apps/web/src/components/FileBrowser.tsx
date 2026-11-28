@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowDown, ArrowUp, ChevronRight, Download, FolderPlus, LayoutGrid, List, Trash2, MoveRight, Pencil, Link2, Hash, Star,
-  ExternalLink, RefreshCw, Share2, MessageSquare } from 'lucide-react';
+  ExternalLink, RefreshCw, Share2, MessageSquare, ListMusic } from 'lucide-react';
 import type { FileStat, MountInfo } from '@stowage/shared';
 import { api, downloadUrl, thumbUrl, zipUrl, ApiError } from '../api';
 import { href, navigate } from '../lib/router';
@@ -69,6 +69,8 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
   const marqueeJustEnded = () => Date.now() - marqueeEnd.current < 250;
   /** Paths being dragged inside the app (dataTransfer can't be read during dragover). */
   const dragging = useRef<string[]>([]);
+  /** BazzyBox member's own mount (playlists, share and review links). */
+  const isBox = /^box-[0-9a-f]{16}$/.test(mount.id);
   /** Folder (path; '' = mount root) that something is being dragged over. */
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const starred = useStore(starredStore);
@@ -174,6 +176,32 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
       const where = dest ? `“${dest.split('/').pop()}”` : mount.label;
       if (moved) toast(`Moved ${moved === 1 ? `“${items[0]!.split('/').pop()}”` : `${moved} items`} to ${where}`);
       if (clashes.length) toast(`${where} already has ${clashes.length === 1 ? `“${clashes[0]}”` : `${clashes.length} items with those names`}; left in place`, 'error');
+    },
+    /** BazzyBox: a playlist from the selected songs and videos (and those directly inside selected folders), in the order shown. */
+    async makePlaylist(items: FileStat[]) {
+      const playable = (f: FileStat) => !f.isDir && /^(audio\/|video\/(mp4|x-m4v|webm|quicktime|ogg)$)/.test(f.mime);
+      const tracks: string[] = [];
+      try {
+        for (const e of items) {
+          if (playable(e)) tracks.push(e.path);
+          else if (e.isDir) for (const c of (await api.listAll(mount.id, e.path)).sort((a, b) => collator.compare(a.name, b.name))) if (playable(c)) tracks.push(c.path);
+        }
+      } catch (err) {
+        return toast((err as Error).message, 'error');
+      }
+      if (!tracks.length) return toast('Select songs or videos (or folders with some in them) to make a playlist.', 'error');
+      const list = [...new Set(tracks)].slice(0, 200);
+      const folder = items.length === 1 && items[0]!.isDir ? items[0]!.name : path.split('/').pop() || 'New playlist';
+      const title = await promptDialog({ title: `Make a playlist of ${list.length} track${list.length > 1 ? 's' : ''}`, label: 'Name', value: folder, confirm: 'Make playlist' });
+      if (!title?.trim()) return;
+      try {
+        const p = await api.box.playlists.create(title.trim(), list);
+        setSelected(new Set());
+        if (tracks.length > list.length) toast(`Playlists hold up to 200 tracks; the first 200 are in.`);
+        dispatchEvent(new CustomEvent('bazzybox:open-playlist', { detail: p.id }));
+      } catch (err) {
+        toast((err as Error).message, 'error');
+      }
     },
     async remove(items: FileStat[]) {
       if (!items.length) return;
@@ -486,6 +514,7 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
           <div className="flex items-center gap-1 text-sm">
             <span className="text-muted mr-1">{sel.length} selected</span>
             <button className="btn btn-icon" title="Download" aria-label="Download selected" onClick={() => act.download(sel)}><Download size={17} /></button>
+            {isBox && <button className="btn btn-icon" title="Make a playlist of these" aria-label="Make a playlist of the selected files" onClick={() => void act.makePlaylist(sel)}><ListMusic size={17} /></button>}
             {!mount.readOnly && <button className="btn btn-icon" title="Move" aria-label="Move selected" onClick={() => void act.move(sel)}><MoveRight size={17} /></button>}
             {!mount.readOnly && <button className="btn btn-icon text-red-500" title="Delete" aria-label="Delete selected" onClick={() => void act.remove(sel)}><Trash2 size={17} /></button>}
           </div>
@@ -678,6 +707,7 @@ export function FileBrowser({ mount, path, open, filter }: { mount: MountInfo; p
           {sel.length > 0 && <button onClick={() => act.download(sel)}><Download size={15} /> Download{sel.length > 1 || menuTarget?.isDir ? ' as zip' : ''}</button>}
           {menuTarget && <button disabled={mount.readOnly} onClick={() => void act.rename(menuTarget)}><Pencil size={15} /> Rename <span className="ml-auto text-xs text-muted">F2</span></button>}
           {sel.length > 0 && <button disabled={mount.readOnly} onClick={() => void act.move(sel)}><MoveRight size={15} /> Move…</button>}
+          {sel.length > 0 && isBox && <button onClick={() => void act.makePlaylist(sel)}><ListMusic size={15} /> Make playlist{sel.length > 1 ? ` (${sel.length})` : ''}</button>}
           {menuTarget && <button onClick={() => void act.copyLink(menuTarget)}><Link2 size={15} /> Copy link</button>}
           {menuTarget && !menuTarget.isDir && /^box-[0-9a-f]{16}$/.test(mount.id) && (
             <button onClick={() => void act.shareLink(menuTarget)}><Share2 size={15} /> Create share link</button>

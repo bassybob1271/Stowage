@@ -26,6 +26,7 @@ export function Shell({ account = false, sites }: { account?: boolean; sites?: {
   const [settings, setSettings] = useState(false);
   const [billing, setBilling] = useState(() => account && new URLSearchParams(location.search).has('credits'));
   const [importing, setImporting] = useState(() => account && new URLSearchParams(location.search).has('import'));
+  const [playlistId, setPlaylistId] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState(() => account && new URLSearchParams(location.search).has('playlists'));
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
@@ -39,6 +40,15 @@ export function Shell({ account = false, sites }: { account?: boolean; sites?: {
   }, [loc.mount, list]);
 
   useEffect(() => setFilter(''), [loc.mount, loc.path]);
+  // The file browser's "Make playlist" opens the new playlist here.
+  useEffect(() => {
+    const open = (e: Event) => {
+      setPlaylistId((e as CustomEvent<string>).detail);
+      setPlaylists(true);
+    };
+    addEventListener('bazzybox:open-playlist', open);
+    return () => removeEventListener('bazzybox:open-playlist', open);
+  }, []);
   useEffect(() => setDrawer(false), [loc.mount, loc.path]);
 
   useEffect(
@@ -164,9 +174,12 @@ export function Shell({ account = false, sites }: { account?: boolean; sites?: {
       {settings && <Settings mounts={list} onClose={() => setSettings(false)} />}
       {playlists && list[0] && (
         <PlaylistMaker
+          key={playlistId ?? 'list'}
           mount={list[0].id}
+          initialId={playlistId}
           onClose={() => {
             setPlaylists(false);
+            setPlaylistId(null);
             if (location.search) history.replaceState(null, '', location.pathname);
           }}
         />

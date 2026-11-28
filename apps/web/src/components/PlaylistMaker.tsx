@@ -49,8 +49,8 @@ function Cover({ p, size = 'full' }: { p: Pick<Playlist, 'coverUrl' | 'title'>; 
 }
 
 /** BazzyBox Playlist Maker: playlists of your audio and video, with a cover picture and a public link. */
-export function PlaylistMaker({ mount, onClose }: { mount: string; onClose: () => void }) {
-  const [openId, setOpenId] = useState<string | null>(null);
+export function PlaylistMaker({ mount, onClose, initialId = null }: { mount: string; onClose: () => void; initialId?: string | null }) {
+  const [openId, setOpenId] = useState<string | null>(initialId);
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['playlists'], queryFn: api.box.playlists.list });
 
