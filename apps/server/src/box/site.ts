@@ -223,7 +223,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 <section class="band alt" id="pricing">
 <div class="wrap">
   <h2>Four plans and a wallet</h2>
-  <p class="mute">Everything is paid in credits. 1 credit is one cent, and credits never expire.</p>
+  <p class="mute">No subscriptions: fill your wallet with credits and go. One wallet pays for BazzyBox, Bazzy TV films and Bazzy Live tickets. Plans renew from your credits, never your card. 1 credit is one cent, and credits never expire.</p>
   <div class="tiers">
     <div class="tier">
       <h3>Free</h3>
