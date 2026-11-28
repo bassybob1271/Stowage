@@ -412,7 +412,7 @@ export class BoxService {
       account: { id: a.id, email: a.email, createdAt: a.createdAt },
       plan: { id: plan.id, label: plan.label, priceCredits: plan.priceCredits, includedBytes: plan.includedBytes, periodEnd: a.periodEnd, overageCreditsPerTbMonth: plan.overageCreditsPerTbMonth },
       usage: { usedBytes: a.usedBytes, allowedBytes: allowedBytes(plan, bal), measuredAt: a.usageAt, sendBytes: a.sendBytes, sendFreeBytes: plan.sendFreeBytes },
-      wallet: { credits: bal / 1000, shared, manageUrl: shared && this.cfg.BAZZY_TV_URL ? `${this.cfg.BAZZY_TV_URL.replace(/\/$/, '')}/wallet` : null, dailyChargeCredits: dailyOverageMc(plan, a.usedBytes - plan.includedBytes) / 1000 },
+      wallet: { credits: bal / 1000, shared, manageUrl: shared && (this.cfg.BAZZY_AUTH_URL ?? this.cfg.BAZZY_TV_URL) ? `${(this.cfg.BAZZY_AUTH_URL ?? this.cfg.BAZZY_TV_URL)!.replace(/\/$/, '')}/wallet` : null, dailyChargeCredits: dailyOverageMc(plan, a.usedBytes - plan.includedBytes) / 1000 },
       plans: Object.values(this.plans),
       packs: PACKS,
       payments: this.cfg.STRIPE_SECRET_KEY ? 'stripe' : this.cfg.BOX_DEV_CREDITS ? 'dev' : 'none',

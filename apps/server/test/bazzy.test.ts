@@ -187,7 +187,7 @@ describe('one Bazzy wallet', () => {
     nextUser = { sub: 'bz-w1', email: 'w1@example.com', email_verified: true };
     const cookie = sessionOf(await signIn());
     const before = await me(cookie);
-    expect(before.wallet).toMatchObject({ credits: 1500, shared: true, manageUrl: 'https://video.bazzy.tv/wallet' });
+    expect(before.wallet).toMatchObject({ credits: 1500, shared: true, manageUrl: 'https://video.test/wallet' });
     const up = await app.request('/api/box/plan', { method: 'POST', headers: { ...json, cookie, origin: 'https://box.test' }, body: JSON.stringify({ plan: 'flex' }) });
     expect(up.status).toBe(200);
     const after = await me(cookie);
