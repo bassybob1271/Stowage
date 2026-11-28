@@ -209,12 +209,12 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-bet
 <section class="band" id="player">
 <div class="wrap">
   <h2>Mazzy, the media player for Bazzy. Free on every plan.</h2>
-  <p class="mute">Your songs and videos play right in BazzyBox, Free plan included. No downloading first, no extra app, no add-on to pay for.</p>
+  <p class="mute">Your songs and videos play right in BazzyBox, Free plan included. No downloading first, no extra app, no add-on to pay for. Musicians send demo playlists to labels and collaborators; filmmakers share the day's dailies with the director and crew, who leave notes on the exact frame or bar.</p>
   <div class="promise">
     <div class="card"><span class="k">Songs</span><h3>A real music player</h3><p>Waveform scrubbing, the folder as a playlist, a queue, shuffle and repeat, and volume and mute. The mini-player keeps the music going while you browse.</p></div>
     <div class="card"><span class="k">Video</span><h3>Stream, don't download</h3><p>Scrub straight to any moment, change the playback speed, pop out picture-in-picture, and turn on subtitles from an .srt or .vtt file next to the video.</p></div>
     <div class="card"><span class="k">1:36</span><h3>Notes pinned to the moment</h3><p>Pause and write "raise the vocal here": the note is pinned to that second on the timeline. Click a pin to jump back, reply, and tick it off when it's done.</p></div>
-    <div class="card"><span class="k">Share</span><h3>Review links and playlists</h3><p>Send a review link and collaborators can play the file and leave timed notes without an account. Or build a playlist with a cover picture and share one link.</p></div>
+    <div class="card"><span class="k">Share</span><h3>Demo playlists and dailies</h3><p>Turn a folder of demos into a playlist with a cover picture and one link. Send dailies as review links: the director and crew play them and leave timed notes without making an account.</p></div>
   </div>
 </div>
 </section>
