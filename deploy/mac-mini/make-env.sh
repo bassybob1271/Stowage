@@ -83,8 +83,8 @@ LIVE_TITLE=Bazzy Live
 LIVE_PUBLISH_USER=publisher
 LIVE_PUBLISH_PASS=$(rnd 16)
 LIVE_INGEST_HOST=0.0.0.0
-LIVE_TV_URL=https://bazzyvideo.com
-LIVE_BOX_URL=https://box.bazzy.io
+LIVE_TV_URL=https://video.bazzy.tv
+LIVE_BOX_URL=https://box.bazzy.tv
 LIVE_SESSION_SECRET=$(rnd)
 # Sign in with Bazzy TV (fill in once Bazzy TV is online):
 # LIVE_BAZZY_AUTH_URL=https://video.bazzy.tv
