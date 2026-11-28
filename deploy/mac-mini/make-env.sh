@@ -25,7 +25,7 @@ LIVE_ID=$(ask "BazzyLive key ID");    LIVE_KEY=$(secret "BazzyLive application k
 
 if [ ! -f .env ]; then
   cat > .env <<EOF
-# BazzyBox (box.bazzy.io) — made by deploy/mac-mini/make-env.sh
+# BazzyBox (box.bazzy.tv) — made by deploy/mac-mini/make-env.sh
 PORT=8787
 HOST=127.0.0.1
 BAZZYBOX=true
@@ -37,14 +37,14 @@ SESSION_SECRET=$(rnd)
 MASTER_KEY=$(rnd)
 DATABASE_URL=file:./data/stowage.db
 MOUNTS_FILE=./mounts.yaml
-APP_ORIGIN=https://box.bazzy.io
+APP_ORIGIN=https://box.bazzy.tv
 COOKIE_SECURE=true
 TRUST_PROXY=true
 NODE_ENV=production
-BAZZY_TV_URL=https://bazzyvideo.com
-BAZZY_LIVE_URL=https://live.bazzy.io
+BAZZY_TV_URL=https://video.bazzy.tv
+BAZZY_LIVE_URL=https://live.bazzy.tv
 # Sign in with Bazzy TV (fill in once Bazzy TV is online):
-# BAZZY_AUTH_URL=https://bazzyvideo.com
+# BAZZY_AUTH_URL=https://video.bazzy.tv
 BAZZY_CLIENT_ID=bazzybox
 BAZZY_CLIENT_SECRET=
 STRIPE_SECRET_KEY=
@@ -87,7 +87,7 @@ LIVE_TV_URL=https://bazzyvideo.com
 LIVE_BOX_URL=https://box.bazzy.io
 LIVE_SESSION_SECRET=$(rnd)
 # Sign in with Bazzy TV (fill in once Bazzy TV is online):
-# LIVE_BAZZY_AUTH_URL=https://bazzyvideo.com
+# LIVE_BAZZY_AUTH_URL=https://video.bazzy.tv
 LIVE_BAZZY_CLIENT_ID=bazzylive
 LIVE_BAZZY_CLIENT_SECRET=
 LIVE_RECORD=true
